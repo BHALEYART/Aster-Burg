@@ -533,7 +533,8 @@ const FORMS = {
       ]},
     ]
   },
-};
+
+  scalper: {
     title: '⚡ Scalper Bot',
     sections: [
       { title: 'Aster API credentials', fields: [
