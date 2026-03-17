@@ -23,6 +23,7 @@
         <nav style="display:flex;gap:4px;align-items:center;">
           <a href="/" class="nav-btn">📈 Dashboard</a>
           <a href="/bots/" class="nav-btn active">🤖 Bots</a>
+          <a href="/bots/unified/" class="nav-btn">⚡ Unified</a>
           <button class="wallet-connect-btn" id="wallet-connect-btn" onclick="connectWallet()">
             Connect Wallet
           </button>
@@ -96,12 +97,23 @@
       </div>
     </div>
 
-    <!-- Step 1: Pick strategy -->
+    <!-- Step 1: Pick chain + strategy -->
     <div class="step-block">
-      <div class="step-label">STEP 1 — CHOOSE STRATEGY</div>
-      <div class="strategy-grid" id="strategy-grid">
+      <div class="step-label">STEP 1 — CHOOSE CHAIN &amp; STRATEGY</div>
 
-        <div class="strategy-card" data-strategy="dca">
+      <!-- Chain tab bar -->
+      <div class="chain-tabs" id="chain-tabs">
+        <button class="chain-tab active" data-chain="aster" onclick="switchChain('aster')">
+          <span class="chain-tab-icon">⬡</span> Aster <span class="chain-tab-sub">BNB Chain · Perpetuals</span>
+        </button>
+        <button class="chain-tab" data-chain="jupiter" onclick="switchChain('jupiter')">
+          <span class="chain-tab-icon">◎</span> Jupiter <span class="chain-tab-sub">Solana · Spot Swaps</span>
+        </button>
+      </div>
+
+      <!-- Aster strategy grid -->
+      <div class="strategy-grid" id="strategy-grid-aster">
+        <div class="strategy-card" data-strategy="aster_dca">
           <div class="strategy-emoji">💰</div>
           <div class="strategy-name">DCA Bot</div>
           <div class="strategy-desc">Buys a fixed $ amount on a schedule. Averages your entry over time.</div>
@@ -112,8 +124,7 @@
             <li>✅ Budget cap</li>
           </ul>
         </div>
-
-        <div class="strategy-card" data-strategy="copy">
+        <div class="strategy-card" data-strategy="aster_copy">
           <div class="strategy-emoji">👑</div>
           <div class="strategy-name">Copy Bot</div>
           <div class="strategy-desc">Mirrors the top trader on the Aster leaderboard. When they open, you open.</div>
@@ -124,8 +135,7 @@
             <li>✅ Blacklist symbols</li>
           </ul>
         </div>
-
-        <div class="strategy-card" data-strategy="momentum">
+        <div class="strategy-card" data-strategy="aster_momentum">
           <div class="strategy-emoji">🚀</div>
           <div class="strategy-name">Momentum Bot</div>
           <div class="strategy-desc">Watches top gainers. Buys breakouts above your threshold, exits on reversal.</div>
@@ -136,9 +146,8 @@
             <li>✅ Max concurrent positions</li>
           </ul>
         </div>
-
-        <div class="strategy-card strategy-card-hot" data-strategy="scalper">
-          <div class="strategy-badge-hot">🔥 NEW</div>
+        <div class="strategy-card strategy-card-hot" data-strategy="aster_scalper">
+          <div class="strategy-badge-hot">🔥 HOT</div>
           <div class="strategy-emoji">⚡</div>
           <div class="strategy-name">Scalper Bot</div>
           <div class="strategy-desc">Snipes 0.3% micro-moves. In and out fast. High frequency, tight stops.</div>
@@ -149,14 +158,65 @@
             <li>✅ Volume filter</li>
           </ul>
         </div>
+      </div>
 
+      <!-- Jupiter strategy grid -->
+      <div class="strategy-grid" id="strategy-grid-jupiter" style="display:none">
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_dca">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-emoji">💰</div>
+          <div class="strategy-name">DCA Bot</div>
+          <div class="strategy-desc">Buys a fixed USDC amount on a schedule via Jupiter. Best route across all Solana DEXs.</div>
+          <ul class="strategy-features">
+            <li>✅ Fixed interval swaps</li>
+            <li>✅ Any SPL token pair</li>
+            <li>✅ Jupiter v6 routing</li>
+            <li>✅ Budget cap</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_copy">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-emoji">👑</div>
+          <div class="strategy-name">Copy Bot</div>
+          <div class="strategy-desc">Mirrors top Solana wallets by monitoring on-chain swap activity in real time.</div>
+          <ul class="strategy-features">
+            <li>✅ Follows target wallet</li>
+            <li>✅ Mirrors swap ratios</li>
+            <li>✅ Max drawdown guard</li>
+            <li>✅ Token blacklist</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_momentum">
+          <div class="strategy-emoji">🚀</div>
+          <div class="strategy-name">Momentum Bot</div>
+          <div class="strategy-desc">Watches Jupiter price feeds. Swaps into tokens breaking out above your threshold.</div>
+          <ul class="strategy-features">
+            <li>✅ Configurable % threshold</li>
+            <li>✅ Auto take-profit swap back</li>
+            <li>✅ Stop-loss swap back</li>
+            <li>✅ Max concurrent swaps</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol strategy-card-hot" data-strategy="jupiter_scalper">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-badge-hot" style="right:auto;left:8px">🔥 HOT</div>
+          <div class="strategy-emoji">⚡</div>
+          <div class="strategy-name">Scalper Bot</div>
+          <div class="strategy-desc">Snipes micro-moves on Solana pairs via Jupiter. Fast in/out, tight slippage.</div>
+          <ul class="strategy-features">
+            <li>✅ 0.3% entry threshold</li>
+            <li>✅ Jupiter best-route always</li>
+            <li>✅ 0.5% TP / 0.3% SL</li>
+            <li>✅ Daily swap cap</li>
+          </ul>
+        </div>
       </div>
     </div>
 
     <!-- Step 2: Fund pool -->
     <div class="step-block" id="fund-block" style="display:none">
       <div class="step-label">STEP 2 — FUND BOT POOL <span class="step-optional">(recommended)</span></div>
-      <div class="fund-card card">
+      <div class="fund-card card" id="fund-inner">
         <div class="fund-explainer">
           <div class="fund-explainer-title">🔐 How the funded pool works</div>
           <div class="fund-explainer-body">A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.</div>
@@ -179,6 +239,28 @@
           </div>
         </div>
       </div>
+
+      <!-- Solana warning (shown instead of fund form for Phantom users) -->
+      <div id="solana-warning" style="display:none" class="solana-warning-card">
+        <div class="solana-warning-icon">⚠️</div>
+        <div class="solana-warning-body">
+          <div class="solana-warning-title">Solana wallet detected</div>
+          <div class="solana-warning-text">
+            You're on the <strong>Aster (BNB Chain)</strong> tab, but Phantom is a Solana wallet.
+            The Aster funded pool requires BNB Chain USDT.<br><br>
+            Switch to the <strong>◎ Jupiter tab</strong> for Solana bots, or:
+          </div>
+          <div class="solana-warning-options">
+            <a class="solana-option-btn" href="https://www.asterdex.com/en/trade/pro/futures/BTCUSDT" target="_blank" rel="noopener">
+              🌉 Bridge on Aster → deposit USDT to BNB Chain, then reconnect with MetaMask
+            </a>
+            <button class="solana-option-btn secondary" onclick="skipFunding()">
+              🔑 Skip pool — use my Aster API key instead (already have funds on Aster)
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Step 3: Configure -->

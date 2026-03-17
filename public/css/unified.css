@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════
+   UNIFIED BOT PAGE
+   ═══════════════════════════════════════ */
+
+/* hero */
+.unified-hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+.unified-hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--yellow); margin-bottom: 0.75rem;
+}
+.unified-hero-sub {
+  font-family: var(--font-mono); font-size: 0.85rem;
+  color: rgba(255,255,255,0.45); line-height: 1.7; margin-bottom: 1.25rem;
+}
+.unified-chain-badges { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.chain-badge {
+  font-family: var(--font-display); font-size: 13px; letter-spacing: 0.06em;
+  padding: 6px 16px; border-radius: 20px; border: 2px solid;
+}
+.chain-badge.solana { color: #9945ff; border-color: #9945ff; background: rgba(153,69,255,0.08); }
+.chain-badge.bnb    { color: #f0b90b; border-color: #f0b90b; background: rgba(240,185,11,0.08); }
+.chain-divider { font-family: var(--font-display); font-size: 18px; color: rgba(255,255,255,0.3); }
+
+/* engines grid */
+.engines-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+@media (max-width: 800px) { .engines-grid { grid-template-columns: 1fr; } }
+
+/* engine panel */
+.engine-panel {
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.07);
+  transition: border-color 0.2s;
+}
+.engine-panel.configured { border-color: rgba(0,200,110,0.3); }
+
+.engine-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.solana-header { background: rgba(153,69,255,0.08); }
+.bnb-header    { background: rgba(240,185,11,0.08); }
+
+.engine-icon { font-size: 22px; flex-shrink: 0; }
+.engine-title {
+  font-family: var(--font-display); font-size: 14px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.solana-header .engine-title { color: #c89bff; }
+.bnb-header    .engine-title { color: #f0b90b; }
+.engine-sub { font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+.engine-status {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 10px;
+  padding: 3px 10px; border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.engine-status.ok { background: rgba(0,200,110,0.12); color: var(--green); border-color: rgba(0,200,110,0.25); }
+
+.engine-body { padding: 1.25rem; }
+
+.btn-engine-save {
+  width: 100%; margin-top: 1rem;
+  padding: 0.65rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.6);
+  font-family: var(--font-display); font-size: 13px; letter-spacing: 0.06em;
+  cursor: pointer; transition: all 0.1s;
+}
+.btn-engine-save:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+.btn-engine-save.saved {
+  background: rgba(0,200,110,0.12);
+  border-color: rgba(0,200,110,0.3);
+  color: var(--green);
+}
+
+/* reuse form styles from bots.css */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

@@ -38,6 +38,7 @@
       </div>
       <div class="header-right">
         <a href="/bots/" class="nav-btn">🤖 Bots</a>
+        <a href="/bots/unified/" class="nav-btn">⚡ Unified</a>
         <div class="live-pill">
           <span class="live-dot" id="live-dot"></span>
           <span class="live-label" id="live-label">Connecting...</span>
@@ -102,6 +103,31 @@
         <div class="loading-msg">💩 Scooping trades...</div>
       </div>
     </section>
+
+    <!-- Bot terminal -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">🤖 Bot terminal</h2>
+        <a href="/bots/" class="nav-btn">+ New bot</a>
+      </div>
+      <div class="card terminal-card">
+        <div class="terminal-toolbar">
+          <div class="terminal-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <div class="terminal-title" id="terminal-title">bot — not connected</div>
+          <div class="terminal-controls">
+            <input class="terminal-host-input" id="terminal-host" type="text" value="localhost:8080" placeholder="host:port" />
+            <button class="terminal-btn" id="btn-connect">Connect</button>
+            <button class="terminal-btn danger" id="btn-disconnect" style="display:none">Disconnect</button>
+          </div>
+        </div>
+        <div id="xterm-container"></div>
+        <div class="terminal-hint">💡 <code>help</code> · <code>status</code> · <code>pause</code> · <code>resume</code> · <code>stop</code> — <a href="/bots/" style="color:var(--yellow)">Build a bot →</a></div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -110,6 +136,9 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit.min.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

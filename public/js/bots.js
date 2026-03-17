@@ -12,6 +12,7 @@ let botPoolWallet   = null; // { address, privateKey } — generated client-side
 // ── Bot state ─────────────────────────────────────────────────────────────────
 let selectedStrategy = null;
 let fundingEnabled   = false;
+let activeChain      = 'aster'; // 'aster' | 'jupiter'
 
 // ── Terminal state ────────────────────────────────────────────────────────────
 let term     = null;
@@ -133,26 +134,56 @@ async function onWalletConnected(address, name) {
   // Fetch USDT balance
   await refreshUSDTBalance();
 
-  // Show fund pool step
-  document.getElementById('fund-block').style.display = 'block';
+  // Solana/Phantom — show bridge warning instead of fund form
+  const fundBlock    = document.getElementById('fund-block');
+  const fundInner    = document.getElementById('fund-inner');
+  const solanaWarn   = document.getElementById('solana-warning');
+  if (fundBlock) fundBlock.style.display = 'block';
+  if (walletType === 'phantom') {
+    if (fundInner)  fundInner.style.display  = 'none';
+    if (solanaWarn) solanaWarn.style.display = 'block';
+  } else {
+    if (fundInner)  fundInner.style.display  = 'block';
+    if (solanaWarn) solanaWarn.style.display = 'none';
+  }
 
   console.log(`[wallet] Connected: ${name} — ${address}`);
 }
 
+const USDT_MAP = {
+  56n:    '0x55d398326f99059fF775485246999027B3197955',
+  1n:     '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+  42161n: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+  97n:    '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd',
+};
+
 async function refreshUSDTBalance() {
-  if (!walletProvider || !walletAddress || walletType === 'phantom') {
+  if (!walletProvider || !walletAddress) {
     document.getElementById('wallet-usdt-balance').textContent = '—';
     return;
   }
+  if (walletType === 'phantom') {
+    // Route through our Vercel proxy to avoid CORS issues with Solana RPCs
+    try {
+      const r = await fetch(`/api/solana-balance?address=${walletAddress}`);
+      const data = await r.json();
+      document.getElementById('wallet-usdt-balance').textContent = `$${data.balance}`;
+    } catch(e) {
+      document.getElementById('wallet-usdt-balance').textContent = 'n/a';
+    }
+    return;
+  }
   try {
-    const contract = new ethers.Contract(USDT_BNB, USDT_ABI, walletProvider);
-    const [raw, decimals] = await Promise.all([
-      contract.balanceOf(walletAddress),
-      contract.decimals(),
-    ]);
+    const net = await walletProvider.getNetwork();
+    const usdtAddr = USDT_MAP[net.chainId];
+    if (!usdtAddr) { document.getElementById('wallet-usdt-balance').textContent = 'unsupported chain'; return; }
+    const runner = walletSigner || walletProvider;
+    const contract = new ethers.Contract(usdtAddr, USDT_ABI, runner);
+    const [raw, decimals] = await Promise.all([contract.balanceOf(walletAddress), contract.decimals()]);
     const balance = parseFloat(ethers.formatUnits(raw, decimals)).toFixed(2);
     document.getElementById('wallet-usdt-balance').textContent = `$${balance}`;
   } catch(e) {
+    console.error('[balance]', e.message);
     document.getElementById('wallet-usdt-balance').textContent = 'n/a';
   }
 }
@@ -209,7 +240,13 @@ async function fundBotPool() {
   btn.disabled = true;
 
   try {
-    const contract  = new ethers.Contract(USDT_BNB, USDT_ABI, walletSigner);
+    if (walletType === 'phantom') {
+      throw new Error('Solana wallet detected. Please use the bridge to move USDT to BNB Chain first, or skip and use API key auth.');
+    }
+    const net = await walletProvider.getNetwork();
+    const usdtAddr = USDT_MAP[net.chainId];
+    if (!usdtAddr) throw new Error(`USDT not supported on this chain. Please switch to BNB Chain or Ethereum.`);
+    const contract  = new ethers.Contract(usdtAddr, USDT_ABI, walletSigner);
     const decimals  = await contract.decimals();
     const amountWei = ethers.parseUnits(amount.toString(), decimals);
 
@@ -247,24 +284,62 @@ function showConfigStep() {
 // STRATEGY SELECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
-document.getElementById('strategy-grid').addEventListener('click', e => {
-  const card = e.target.closest('.strategy-card');
-  if (!card) return;
-  document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
-  card.classList.add('selected');
-  selectedStrategy = card.dataset.strategy;
+// ── Chain tab switcher ────────────────────────────────────────────────────────
+function switchChain(chain) {
+  activeChain = chain;
+  selectedStrategy = null;
 
-  // If wallet connected, go straight to config; otherwise show fund block first
+  // Swap tab active states
+  document.querySelectorAll('.chain-tab').forEach(t => t.classList.toggle('active', t.dataset.chain === chain));
+
+  // Swap strategy grids
+  document.getElementById('strategy-grid-aster').style.display   = chain === 'aster'   ? 'grid' : 'none';
+  document.getElementById('strategy-grid-jupiter').style.display = chain === 'jupiter' ? 'grid' : 'none';
+
+  // Clear any selection
+  document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+
+  // Hide downstream steps when switching chains
+  ['config-block','download-block','terminal-block'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  // On Jupiter tab: show fund block only if wallet connected AND Phantom; hide Solana warning on Aster tab
   if (walletAddress) {
-    showConfigStep();
-  } else {
-    document.getElementById('config-step-label').textContent = 'STEP 2 — CONFIGURE';
-    document.getElementById('download-step-label').textContent = 'STEP 3 — DOWNLOAD & RUN';
-    document.getElementById('terminal-step-label').textContent = 'STEP 4 — LIVE TERMINAL';
-    document.getElementById('config-block').style.display = 'block';
-    document.getElementById('config-block').scrollIntoView({ behavior: 'smooth' });
+    const isPhantom = walletType === 'phantom';
+    if (chain === 'jupiter' && isPhantom) {
+      document.getElementById('fund-block').style.display   = 'block';
+      document.getElementById('fund-inner').style.display   = 'block';
+      document.getElementById('solana-warning').style.display = 'none';
+    } else if (chain === 'aster' && isPhantom) {
+      document.getElementById('fund-block').style.display   = 'block';
+      document.getElementById('fund-inner').style.display   = 'none';
+      document.getElementById('solana-warning').style.display = 'block';
+    }
   }
-  renderConfigForm(selectedStrategy);
+}
+
+// ── Strategy card clicks (both grids) ────────────────────────────────────────
+['strategy-grid-aster','strategy-grid-jupiter'].forEach(gridId => {
+  document.getElementById(gridId).addEventListener('click', e => {
+    const card = e.target.closest('.strategy-card');
+    if (!card) return;
+    document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedStrategy = card.dataset.strategy;
+
+    // If wallet connected, go straight to config; otherwise show fund block first
+    if (walletAddress) {
+      showConfigStep();
+    } else {
+      document.getElementById('config-step-label').textContent    = 'STEP 2 — CONFIGURE';
+      document.getElementById('download-step-label').textContent  = 'STEP 3 — DOWNLOAD & RUN';
+      document.getElementById('terminal-step-label').textContent  = 'STEP 4 — LIVE TERMINAL';
+      document.getElementById('config-block').style.display = 'block';
+      document.getElementById('config-block').scrollIntoView({ behavior: 'smooth' });
+    }
+    renderConfigForm(selectedStrategy);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -334,7 +409,131 @@ const FORMS = {
       ]},
     ]
   },
-  scalper: {
+  // ── kept for legacy bot.js references ──
+  jupiter: {
+    title: '🪐 Jupiter Bot (Solana)',
+    sections: [
+      { title: 'Solana wallet', fields: [
+        { id: 'privateKey', label: 'Wallet private key (base58)', type: 'password', placeholder: 'your-base58-private-key', hint: 'The bot signs transactions with this key. Stored only in your local .env. Never shared.' },
+        { id: 'rpcUrl',     label: 'Solana RPC URL', type: 'text', placeholder: 'https://api.mainnet-beta.solana.com', hint: 'Use a private RPC for better performance (Helius, QuickNode, Alchemy). Public RPC may rate-limit.' },
+      ]},
+      { title: 'Strategy', fields: [
+        { id: 'inputMint',  label: 'Input token mint',  type: 'text', placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', hint: 'Default: USDC. Paste any SPL token mint address.' },
+        { id: 'outputMint', label: 'Output token mint', type: 'text', placeholder: 'So11111111111111111111111111111111111111112',   hint: 'Default: SOL (Wrapped). Jupiter routes through all Solana DEXs for best price.' },
+        { id: 'inputAmount',   label: 'Input amount (per swap)', type: 'number', placeholder: '10', hint: 'In human-readable units e.g. 10 = $10 USDC' },
+        { id: 'gainThreshold', label: 'Entry threshold %', type: 'number', placeholder: '1.5', hint: 'Only swap when price has moved this % since last check' },
+        { id: 'scanInterval',  label: 'Scan interval',    type: 'select', options: ['30s','1m','5m','15m'], hint: 'How often to check price and potentially swap' },
+        { id: 'slippageBps',   label: 'Slippage (bps)',   type: 'number', placeholder: '50', hint: '50 = 0.5% slippage tolerance. Higher = more likely to fill, worse price.' },
+      ]},
+      { title: 'Risk', fields: [
+        { id: 'maxSwapsPerDay', label: 'Max swaps per day', type: 'number', placeholder: '10', hint: 'Hard cap on daily swaps' },
+        { id: 'dryRun',        label: 'Dry run mode',      type: 'select', options: ['true','false'], hint: 'Simulate swaps without sending real transactions' },
+      ]},
+    ]
+  },
+
+  // ── Aster chain variants ──────────────────────────────────────────────────
+  aster_dca:      null, // resolved dynamically — points to dca
+  aster_copy:     null,
+  aster_momentum: null,
+  aster_scalper:  null,
+
+  // ── Jupiter chain variants ────────────────────────────────────────────────
+  jupiter_dca: {
+    title: '💰 Jupiter DCA Bot (Solana)',
+    sections: [
+      { title: 'Solana wallet', fields: [
+        { id: 'privateKey', label: 'Wallet private key (base58)', type: 'password', placeholder: 'your-base58-private-key', hint: 'Stored only in your local .env. Never shared.' },
+        { id: 'rpcUrl',     label: 'Solana RPC URL', type: 'text', placeholder: 'https://api.mainnet-beta.solana.com', hint: 'Use Helius or QuickNode for better rate limits.' },
+        { id: 'cashoutAddress', label: 'Cashout address (Solana)', type: 'text', placeholder: 'Your Phantom wallet address', hint: 'Where profits go on cashout command.' },
+      ]},
+      { title: 'DCA settings', fields: [
+        { id: 'inputMint',  label: 'Input token mint (spend)',  type: 'text', placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', hint: 'Default: USDC' },
+        { id: 'outputMint', label: 'Output token mint (buy)',   type: 'text', placeholder: 'So11111111111111111111111111111111111111112', hint: 'Default: SOL' },
+        { id: 'inputAmount',  label: 'Buy amount per interval (USDC)', type: 'number', placeholder: '10' },
+        { id: 'interval',     label: 'Buy interval',             type: 'select', options: ['5m','15m','1h','4h','1d'] },
+        { id: 'budgetCap',    label: 'Total budget cap (USDC)',  type: 'number', placeholder: '500', hint: 'Bot stops buying after this total spend' },
+        { id: 'slippageBps',  label: 'Slippage (bps)',           type: 'number', placeholder: '50' },
+      ]},
+      { title: 'Risk', fields: [
+        { id: 'dryRun', label: 'Dry run mode', type: 'select', options: ['true','false'], hint: 'Simulate without real transactions' },
+      ]},
+    ]
+  },
+
+  jupiter_copy: {
+    title: '👑 Jupiter Copy Bot (Solana)',
+    sections: [
+      { title: 'Solana wallet', fields: [
+        { id: 'privateKey',     label: 'Wallet private key (base58)', type: 'password', placeholder: 'your-base58-private-key', hint: 'Stored only in your local .env. Never shared.' },
+        { id: 'rpcUrl',         label: 'Solana RPC URL', type: 'text', placeholder: 'https://api.mainnet-beta.solana.com' },
+        { id: 'cashoutAddress', label: 'Cashout address', type: 'text', placeholder: 'Your Phantom wallet address' },
+      ]},
+      { title: 'Copy settings', fields: [
+        { id: 'targetWallet',  label: 'Target wallet to mirror', type: 'text', placeholder: 'Solana wallet address', hint: 'Monitor this wallet\'s Jupiter swaps and mirror them.' },
+        { id: 'positionSize',  label: 'Max position size (USDC)', type: 'number', placeholder: '50', hint: 'Cap per mirrored trade regardless of target\'s size' },
+        { id: 'mirrorRatio',   label: 'Mirror ratio %', type: 'number', placeholder: '10', hint: 'Trade 10% of what the target trades' },
+        { id: 'maxDrawdown',   label: 'Max drawdown %', type: 'number', placeholder: '20', hint: 'Pauses if your wallet drops this %' },
+        { id: 'blacklist',     label: 'Blacklist tokens', type: 'text', placeholder: 'mint1,mint2', hint: 'Never mirror swaps into these token mints' },
+        { id: 'pollInterval',  label: 'Poll interval', type: 'select', options: ['10s','30s','1m'] },
+        { id: 'slippageBps',   label: 'Slippage (bps)', type: 'number', placeholder: '100' },
+      ]},
+      { title: 'Risk', fields: [
+        { id: 'dryRun', label: 'Dry run mode', type: 'select', options: ['true','false'] },
+      ]},
+    ]
+  },
+
+  jupiter_momentum: {
+    title: '🚀 Jupiter Momentum Bot (Solana)',
+    sections: [
+      { title: 'Solana wallet', fields: [
+        { id: 'privateKey',     label: 'Wallet private key (base58)', type: 'password', placeholder: 'your-base58-private-key', hint: 'Stored only in your local .env. Never shared.' },
+        { id: 'rpcUrl',         label: 'Solana RPC URL', type: 'text', placeholder: 'https://api.mainnet-beta.solana.com' },
+        { id: 'cashoutAddress', label: 'Cashout address', type: 'text', placeholder: 'Your Phantom wallet address' },
+      ]},
+      { title: 'Momentum settings', fields: [
+        { id: 'inputMint',     label: 'Input mint (USDC to spend)', type: 'text', placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
+        { id: 'outputMint',    label: 'Output mint (token to buy)', type: 'text', placeholder: 'So11111111111111111111111111111111111111112', hint: 'SOL by default. Change to any SPL token.' },
+        { id: 'gainThreshold', label: 'Entry threshold %',  type: 'number', placeholder: '1.5', hint: 'Buy when price moves this % upward' },
+        { id: 'inputAmount',   label: 'Position size (USDC)', type: 'number', placeholder: '25' },
+        { id: 'takeProfit',    label: 'Take-profit %',  type: 'number', placeholder: '5' },
+        { id: 'stopLoss',      label: 'Stop-loss %',    type: 'number', placeholder: '3' },
+        { id: 'scanInterval',  label: 'Scan interval',  type: 'select', options: ['30s','1m','5m','15m'] },
+        { id: 'slippageBps',   label: 'Slippage (bps)', type: 'number', placeholder: '50' },
+      ]},
+      { title: 'Risk', fields: [
+        { id: 'maxSwapsPerDay', label: 'Max swaps per day', type: 'number', placeholder: '20' },
+        { id: 'dryRun',         label: 'Dry run mode', type: 'select', options: ['true','false'] },
+      ]},
+    ]
+  },
+
+  jupiter_scalper: {
+    title: '⚡ Jupiter Scalper Bot (Solana)',
+    sections: [
+      { title: 'Solana wallet', fields: [
+        { id: 'privateKey',     label: 'Wallet private key (base58)', type: 'password', placeholder: 'your-base58-private-key', hint: 'Stored only in your local .env. Never shared.' },
+        { id: 'rpcUrl',         label: 'Solana RPC URL', type: 'text', placeholder: 'https://api.mainnet-beta.solana.com', hint: 'Private RPC strongly recommended for scalping speed.' },
+        { id: 'cashoutAddress', label: 'Cashout address', type: 'text', placeholder: 'Your Phantom wallet address' },
+      ]},
+      { title: 'Scalper settings', fields: [
+        { id: 'inputMint',     label: 'Input mint (spend)',  type: 'text', placeholder: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', hint: 'USDC by default' },
+        { id: 'outputMint',    label: 'Output mint (buy)',   type: 'text', placeholder: 'So11111111111111111111111111111111111111112' },
+        { id: 'gainThreshold', label: 'Entry threshold %',  type: 'number', placeholder: '0.3', hint: 'Swap when price moves 0.3% in one scan window' },
+        { id: 'inputAmount',   label: 'Position size (USDC)', type: 'number', placeholder: '10' },
+        { id: 'takeProfit',    label: 'Take-profit %',  type: 'number', placeholder: '0.5' },
+        { id: 'stopLoss',      label: 'Stop-loss %',    type: 'number', placeholder: '0.3' },
+        { id: 'scanInterval',  label: 'Scan interval',  type: 'select', options: ['10s','30s','1m'], hint: '30s recommended for scalping' },
+        { id: 'slippageBps',   label: 'Slippage (bps)', type: 'number', placeholder: '30', hint: 'Keep tight — 30bps = 0.3%' },
+      ]},
+      { title: 'Risk', fields: [
+        { id: 'dailyTradeCap', label: 'Max swaps per day',    type: 'number', placeholder: '100' },
+        { id: 'dryRun',        label: 'Dry run mode', type: 'select', options: ['true','false'], hint: 'STRONGLY recommend true first' },
+      ]},
+    ]
+  },
+};
     title: '⚡ Scalper Bot',
     sections: [
       { title: 'Aster API credentials', fields: [
@@ -361,7 +560,9 @@ const FORMS = {
 };
 
 function renderConfigForm(strategy) {
-  const def = FORMS[strategy];
+  // Resolve aster_ aliases to their base strategy
+  const baseStrategy = strategy.startsWith('aster_') ? strategy.replace('aster_', '') : strategy;
+  const def = FORMS[strategy] || FORMS[baseStrategy];
   const el  = document.getElementById('config-form');
   let html  = `<div class="form-section-title" style="margin-top:0;font-size:14px">${def.title}</div>`;
 
@@ -460,15 +661,29 @@ document.getElementById('btn-download').addEventListener('click', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildEnvFile(config) {
+  const isJupiter = selectedStrategy && selectedStrategy.startsWith('jupiter_');
   const poolLines = botPoolWallet
     ? `\n# Bot pool wallet (funded via AsterBoard)\nBOT_POOL_ADDRESS=${botPoolWallet.address}\nBOT_POOL_PRIVATE_KEY=${botPoolWallet.privateKey}\n`
     : '';
 
-  const skip = ['apiKey','apiSecret'];
+  const skip = isJupiter ? ['privateKey'] : ['apiKey','apiSecret'];
   const rest = Object.entries(config)
     .filter(([k]) => !skip.includes(k))
     .map(([k,v]) => `${k.toUpperCase()}=${v}`)
     .join('\n');
+
+  if (isJupiter) {
+    return `# Jupiter ${selectedStrategy?.toUpperCase()} Bot — generated by AsterBoard
+# ⚠️  Keep this file private. Never share your private key.
+
+STRATEGY=${selectedStrategy}
+JUPITER_PRIVATE_KEY=${config.privateKey || ''}
+JUPITER_RPC_URL=${config.rpcUrl || 'https://api.mainnet-beta.solana.com'}
+WS_PORT=8080
+${poolLines}
+${rest}
+`;
+  }
 
   return `# Aster ${selectedStrategy?.toUpperCase()} Bot — generated by AsterBoard
 # ⚠️  Keep this file private. Never share your API keys or private key.
@@ -509,7 +724,8 @@ services:
 }
 
 function getBotPackageJson() {
-  return JSON.stringify({
+  const isJupiter = selectedStrategy && selectedStrategy.startsWith('jupiter_');
+  const base = {
     name: `aster-${selectedStrategy}-bot`,
     version: '1.0.0',
     main: 'bot.js',
@@ -519,7 +735,12 @@ function getBotPackageJson() {
       'ws': '^8.16.0',
       'dotenv': '^16.4.5',
     }
-  }, null, 2);
+  };
+  if (isJupiter || selectedStrategy === 'jupiter') {
+    base.dependencies['@solana/web3.js'] = '^1.98.0';
+    base.dependencies['bs58']            = '^6.0.0';
+  }
+  return JSON.stringify(base, null, 2);
 }
 
 function getReadme(strategy, config) {
@@ -632,10 +853,21 @@ let stats = { trades: 0, pnl: 0, start: Date.now() };
 `;
 
   const strategies = {
-    dca: getDcaBot(config),
-    copy: getCopyBot(config),
-    momentum: getMomentumBot(config),
-    scalper: getScalperBot(config),
+    dca:              getDcaBot(config),
+    copy:             getCopyBot(config),
+    momentum:         getMomentumBot(config),
+    jupiter:          getJupiterBot(config),
+    scalper:          getScalperBot(config),
+    // aster_ aliases — use same Aster templates
+    aster_dca:        getDcaBot(config),
+    aster_copy:       getCopyBot(config),
+    aster_momentum:   getMomentumBot(config),
+    aster_scalper:    getScalperBot(config),
+    // jupiter_ variants — all use Jupiter bot template with strategy param
+    jupiter_dca:      getJupiterBot(config, 'dca'),
+    jupiter_copy:     getJupiterBot(config, 'copy'),
+    jupiter_momentum: getJupiterBot(config, 'momentum'),
+    jupiter_scalper:  getJupiterBot(config, 'scalper'),
   };
 
   return header + (strategies[strategy] || '// Unknown strategy');
@@ -793,6 +1025,164 @@ if (DRY_RUN) log('⚠️  DRY RUN — no real orders');
 scan();
 setInterval(scan, SCAN_MS);
 `;
+}
+
+function getJupiterBot(c, variant) {
+  const variantNames = { dca: 'Jupiter DCA Bot', copy: 'Jupiter Copy Bot', momentum: 'Jupiter Momentum Bot', scalper: 'Jupiter Scalper Bot' };
+  const stratName    = variantNames[variant] || 'Jupiter Bot';
+  const defaultThreshold = variant === 'scalper' ? '0.3' : variant === 'dca' ? '0' : '1.5';
+  const defaultAmount    = variant === 'scalper' ? '10' : '10';
+  const defaultInterval  = variant === 'scalper' ? '30s' : variant === 'dca' ? '1h' : '1m';
+  const defaultSlippage  = variant === 'scalper' ? '30' : '50';
+  const defaultMaxSwaps  = variant === 'scalper' ? '100' : variant === 'dca' ? '999' : '20';
+
+  return `
+const STRATEGY_NAME  = '${stratName}';
+const INPUT_MINT     = process.env.INPUTMINT    || '${c.inputMint  || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'}'; // USDC
+const OUTPUT_MINT    = process.env.OUTPUTMINT   || '${c.outputMint || 'So11111111111111111111111111111111111111112'}';   // SOL
+const INPUT_AMOUNT   = parseFloat(process.env.INPUTAMOUNT   || '${c.inputAmount   || defaultAmount}');
+const THRESHOLD      = parseFloat(process.env.GAINTHRESHOLD || '${c.gainThreshold || defaultThreshold}') / 100;
+const SCAN_MS        = { '10s':10000,'30s':30000,'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000 }[process.env.SCANINTERVAL || '${c.scanInterval || defaultInterval}'] || 60000;
+const SLIPPAGE_BPS   = parseInt(process.env.SLIPPAGEBPS     || '${c.slippageBps   || defaultSlippage}');
+const MAX_SWAPS_DAY  = parseInt(process.env.MAXSWAPSPERDAY  || '${c.maxSwapsPerDay || c.dailyTradeCap || defaultMaxSwaps}');
+const CASHOUT_ADDR   = process.env.CASHOUTADDRESS || '${c.cashoutAddress || ''}';
+const DRY_RUN        = process.env.DRY_RUN === 'true';
+const RPC_URL        = process.env.RPCURL || process.env.JUPITER_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const PRIVATE_KEY    = process.env.JUPITER_PRIVATE_KEY || process.env.PRIVATE_KEY;
+
+// Jupiter API v6 (Metis routing engine)
+const JUP_QUOTE_URL  = 'https://api.jup.ag/swap/v1/quote';
+const JUP_SWAP_URL   = 'https://api.jup.ag/swap/v1/swap';
+
+const { Connection, Keypair, VersionedTransaction } = require('@solana/web3.js');
+const bs58 = require('bs58');
+
+const connection = new Connection(RPC_URL, 'confirmed');
+const keypair    = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY));
+
+// Token decimals map (common tokens)
+const DECIMALS = {
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 6,  // USDC
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB':  6,  // USDT
+  'So11111111111111111111111111111111111111112':    9,  // SOL
+};
+
+function toRaw(amount, mint) {
+  const decimals = DECIMALS[mint] ?? 6;
+  return Math.round(amount * Math.pow(10, decimals));
+}
+
+let dailySwaps  = 0;
+let lastPrice   = null; // last observed output/input ratio
+let stats       = { swaps: 0, start: Date.now() };
+
+async function getQuote() {
+  const rawAmount = toRaw(INPUT_AMOUNT, INPUT_MINT);
+  const url = JUP_QUOTE_URL +
+    '?inputMint='  + INPUT_MINT +
+    '&outputMint=' + OUTPUT_MINT +
+    '&amount='     + rawAmount +
+    '&slippageBps='+ SLIPPAGE_BPS +
+    '&restrictIntermediateTokens=true' +
+    '&instructionVersion=V2';
+
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Quote failed: ' + r.status);
+  return r.json();
+}
+
+async function executeSwap(quoteResponse) {
+  if (DRY_RUN) {
+    log('[DRY] Would swap ' + INPUT_AMOUNT + ' ' + INPUT_MINT.slice(0,8) + '... → ' + OUTPUT_MINT.slice(0,8) + '...');
+    log('[DRY] outAmount: ' + quoteResponse.outAmount + ' | route: ' + (quoteResponse.routePlan?.[0]?.swapInfo?.label || 'unknown'));
+    return { signature: 'dry-' + Date.now() };
+  }
+
+  const swapResp = await fetch(JUP_SWAP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      quoteResponse,
+      userPublicKey: keypair.publicKey.toBase58(),
+      dynamicComputeUnitLimit: true,
+      dynamicSlippage: true,
+      prioritizationFeeLamports: {
+        priorityLevelWithMaxLamports: { maxLamports: 1000000, priorityLevel: 'high' }
+      }
+    })
+  });
+
+  if (!swapResp.ok) throw new Error('Swap build failed: ' + swapResp.status);
+  const { swapTransaction } = await swapResp.json();
+
+  // Deserialise, sign, send
+  const txBuf = Buffer.from(swapTransaction, 'base64');
+  const tx    = VersionedTransaction.deserialize(txBuf);
+  tx.sign([keypair]);
+
+  const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 3 });
+  await connection.confirmTransaction(sig, 'confirmed');
+  return { signature: sig };
+}
+
+async function scan() {
+  if (paused || stopped) return;
+  if (dailySwaps >= MAX_SWAPS_DAY) { log('⛔ Daily swap cap (' + MAX_SWAPS_DAY + ') hit. Paused until restart.'); paused = true; return; }
+
+  const quote = await getQuote();
+  const outAmount  = parseFloat(quote.outAmount);
+  const inAmount   = parseFloat(quote.inAmount);
+  const currentPrice = outAmount / inAmount; // output per input unit
+
+  log('📡 Price check | In: ' + INPUT_AMOUNT + ' | Out: ' + (outAmount / Math.pow(10, DECIMALS[OUTPUT_MINT] ?? 9)).toFixed(6) + ' | Route: ' + (quote.routePlan?.[0]?.swapInfo?.label || 'unknown') + ' | Impact: ' + (parseFloat(quote.priceImpactPct || 0) * 100).toFixed(4) + '%');
+
+  if (lastPrice === null) {
+    lastPrice = currentPrice;
+    log('✅ Baseline price set: ' + currentPrice.toFixed(8));
+    return;
+  }
+
+  const move = (currentPrice - lastPrice) / lastPrice;
+  log('📊 Price move: ' + (move * 100).toFixed(4) + '% | Threshold: ' + (THRESHOLD * 100).toFixed(2) + '%');
+
+  if (move >= THRESHOLD) {
+    log('🪐 JUPITER SWAP | Move: +' + (move * 100).toFixed(3) + '% | Executing...');
+    try {
+      const result = await executeSwap(quote);
+      stats.swaps++;
+      dailySwaps++;
+      lastPrice = currentPrice;
+      log('✅ Swap confirmed | Sig: ' + result.signature);
+    } catch(e) {
+      log('❌ Swap failed: ' + e.message);
+    }
+  }
+}
+
+function handleCommand(cmd, ws) {
+  const s = m => ws.send(JSON.stringify({ type: 'log', msg: m + '\r\n> ' }));
+  const uptime = Math.floor((Date.now() - stats.start) / 60000);
+  if (cmd === 'help')   s('Commands: status | pause | resume | stop');
+  else if (cmd === 'status') s(
+    '🪐 Jupiter Bot | Swaps today: ' + dailySwaps + '/' + MAX_SWAPS_DAY +
+    ' | Total: ' + stats.swaps +
+    ' | Uptime: ' + uptime + 'm | ' + (paused?'PAUSED':'RUNNING') +
+    '\r\nRoute: ' + INPUT_MINT.slice(0,8) + '... → ' + OUTPUT_MINT.slice(0,8) + '...' +
+    '\r\nLast price: ' + (lastPrice ? lastPrice.toFixed(8) : 'not set')
+  );
+  else if (cmd === 'pause')  { paused = true; s('⏸️ Paused'); }
+  else if (cmd === 'resume') { paused = false; s('▶️ Running'); }
+  else if (cmd === 'stop')   { stopped = true; s('🛑 Stopped'); }
+  else s('Unknown: ' + cmd + '. Type help.');
+}
+
+log('🪐 Jupiter Bot starting | ' + INPUT_MINT.slice(0,8) + '... → ' + OUTPUT_MINT.slice(0,8) + '...');
+log('Amount: ' + INPUT_AMOUNT + ' | Threshold: ' + (THRESHOLD*100).toFixed(2) + '% | Slippage: ' + SLIPPAGE_BPS + 'bps | DryRun: ' + DRY_RUN);
+if (DRY_RUN) log('⚠️  DRY RUN — no real transactions will be sent');
+log('Fetching initial price baseline...');
+scan();
+setInterval(scan, SCAN_MS);
+\`;
 }
 
 function getScalperBot(c) {

@@ -1,8 +1,28 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/bots",     "destination": "/public/bots/index.html" },
-    { "source": "/bots/",    "destination": "/public/bots/index.html" },
-    { "source": "/(.*)",     "destination": "/public/$1" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/bots",
+      "destination": "/public/bots/index.html"
+    },
+    {
+      "source": "/bots/unified",
+      "destination": "/public/bots/unified/index.html"
+    },
+    {
+      "source": "/bots/unified/",
+      "destination": "/public/bots/unified/index.html"
+    },
+    {
+      "source": "/bots/",
+      "destination": "/public/bots/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/$1"
+    }
   ]
 }

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AsterBoard — Unified Bot</title>
+  <meta name="description" content="Run Jupiter (Solana) and Aster (BNB Chain) trading bots simultaneously from one Docker container. Independent strategies, one terminal." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/bots.css" />
+  <link rel="stylesheet" href="/css/unified.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+          <span class="brand-emoji">🍔</span>
+          <span class="brand-name">ASTER<span class="brand-accent">BOARD</span></span>
+        </a>
+      </div>
+      <div class="header-right">
+        <nav style="display:flex;gap:4px;align-items:center;">
+          <a href="/" class="nav-btn">📈 Dashboard</a>
+          <a href="/bots/" class="nav-btn">🤖 Bots</a>
+          <a href="/bots/unified/" class="nav-btn active">⚡ Unified</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <div class="unified-hero">
+      <h1 class="unified-hero-title">⚡ Unified Bot</h1>
+      <p class="unified-hero-sub">Two engines. One container. Jupiter trades Solana. Aster trades BNB Chain.<br>Both run independently — cash out from either at any time.</p>
+      <div class="unified-chain-badges">
+        <span class="chain-badge solana">◎ Solana · Jupiter DEX</span>
+        <span class="chain-divider">+</span>
+        <span class="chain-badge bnb">⬡ BNB Chain · Aster DEX</span>
+      </div>
+    </div>
+
+    <!-- Engine configurators side by side -->
+    <div class="engines-grid">
+
+      <!-- Jupiter engine -->
+      <div class="engine-panel" id="jupiter-panel">
+        <div class="engine-header solana-header">
+          <span class="engine-icon">◎</span>
+          <div>
+            <div class="engine-title">Jupiter Engine</div>
+            <div class="engine-sub">Solana DEX · USDC/USDT pairs</div>
+          </div>
+          <div class="engine-status" id="jupiter-status">not configured</div>
+        </div>
+
+        <div class="engine-body">
+          <div class="form-group">
+            <label class="form-label">Strategy</label>
+            <select class="form-select" id="j-strategy">
+              <option value="momentum">Momentum — buy breakouts above threshold</option>
+              <option value="scalper">Scalper — snipe 0.3% micro-moves</option>
+              <option value="dca">DCA — buy fixed amount on schedule</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Wallet private key (base58)</label>
+            <input class="form-input" id="j-privateKey" type="password" placeholder="Solana wallet private key" autocomplete="off" />
+            <div class="form-hint">ℹ️ Stored only in your local .env file</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Solana RPC URL</label>
+            <input class="form-input" id="j-rpcUrl" type="text" placeholder="https://api.mainnet-beta.solana.com" />
+            <div class="form-hint">ℹ️ Use a private RPC (Helius, QuickNode) for best performance</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Input mint</label>
+              <input class="form-input" id="j-inputMint" type="text" placeholder="USDC mint" value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Output mint</label>
+              <input class="form-input" id="j-outputMint" type="text" placeholder="SOL mint" value="So11111111111111111111111111111111111111112" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Amount per swap (USDC)</label>
+              <input class="form-input" id="j-amount" type="number" placeholder="10" value="10" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Threshold %</label>
+              <input class="form-input" id="j-threshold" type="number" placeholder="1.5" value="1.5" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cashout address (Solana)</label>
+              <input class="form-input" id="j-cashout" type="text" placeholder="Your Phantom address" />
+              <div class="form-hint">ℹ️ Where profits go on cashout command</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dry run</label>
+              <select class="form-select" id="j-dryRun">
+                <option value="true">true — simulate only</option>
+                <option value="false">false — real trades</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-engine-save" onclick="saveEngine('jupiter')">✓ Save Jupiter config</button>
+        </div>
+      </div>
+
+      <!-- Aster engine -->
+      <div class="engine-panel" id="aster-panel">
+        <div class="engine-header bnb-header">
+          <span class="engine-icon">⬡</span>
+          <div>
+            <div class="engine-title">Aster Engine</div>
+            <div class="engine-sub">BNB Chain · Perpetuals</div>
+          </div>
+          <div class="engine-status" id="aster-status">not configured</div>
+        </div>
+
+        <div class="engine-body">
+          <div class="form-group">
+            <label class="form-label">Strategy</label>
+            <select class="form-select" id="a-strategy">
+              <option value="scalper">Scalper — snipe 0.3% micro-moves</option>
+              <option value="momentum">Momentum — buy breakouts</option>
+              <option value="dca">DCA — buy on schedule</option>
+              <option value="copy">Copy — mirror top leaderboard trader</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Aster API key</label>
+            <input class="form-input" id="a-apiKey" type="text" placeholder="0xYourAsterApiKey" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Aster API secret</label>
+            <input class="form-input" id="a-apiSecret" type="password" placeholder="0xYourAsterSecret" autocomplete="off" />
+            <div class="form-hint">ℹ️ From Aster → Settings → API Management</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Position size (USDT)</label>
+              <input class="form-input" id="a-positionSize" type="number" placeholder="25" value="25" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Threshold %</label>
+              <input class="form-input" id="a-threshold" type="number" placeholder="0.3" value="0.3" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Take profit %</label>
+              <input class="form-input" id="a-takeProfit" type="number" placeholder="0.5" value="0.5" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stop loss %</label>
+              <input class="form-input" id="a-stopLoss" type="number" placeholder="0.3" value="0.3" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Max positions</label>
+              <input class="form-input" id="a-maxPositions" type="number" placeholder="3" value="3" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Daily loss cap (USDT)</label>
+              <input class="form-input" id="a-dailyLoss" type="number" placeholder="50" value="50" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dry run</label>
+            <select class="form-select" id="a-dryRun">
+              <option value="true">true — simulate only</option>
+              <option value="false">false — real trades</option>
+            </select>
+          </div>
+          <button class="btn-engine-save" onclick="saveEngine('aster')">✓ Save Aster config</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Download -->
+    <div class="step-block" id="download-block" style="display:none">
+      <div class="step-label">DOWNLOAD & RUN</div>
+      <div class="card download-card">
+        <div class="download-main">
+          <div>
+            <div class="download-title">⚡ Unified bot ready</div>
+            <div class="download-sub">Both engines configured. One command to run both.</div>
+            <div class="download-cmd">docker compose up -d</div>
+          </div>
+          <button class="btn-download" id="btn-download" onclick="generateUnifiedBot()">⬇️ Download Bot</button>
+        </div>
+        <div class="download-steps">
+          <div class="dl-step"><span class="dl-num">1</span> Install <a href="https://docs.docker.com/get-docker/" target="_blank" rel="noopener">Docker Desktop</a></div>
+          <div class="dl-step"><span class="dl-num">2</span> Unzip the downloaded file</div>
+          <div class="dl-step"><span class="dl-num">3</span> Run <code>docker compose up -d</code></div>
+          <div class="dl-step"><span class="dl-num">4</span> Connect the terminal below — both engines appear in one stream</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="step-block" id="terminal-block" style="display:none">
+      <div class="step-label">LIVE TERMINAL — BOTH ENGINES</div>
+      <div class="card terminal-card">
+        <div class="terminal-toolbar">
+          <div class="terminal-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <div class="terminal-title" id="terminal-title">unified bot — not connected</div>
+          <div class="terminal-controls">
+            <input class="terminal-host-input" id="terminal-host" type="text" value="localhost:8080" />
+            <button class="terminal-btn" id="btn-connect">Connect</button>
+            <button class="terminal-btn danger" id="btn-disconnect" style="display:none">Disconnect</button>
+          </div>
+        </div>
+        <div id="xterm-container"></div>
+        <div class="terminal-hint">
+          💡 <code>status</code> · <code>pause jupiter</code> · <code>pause aster</code> · <code>resume jupiter</code> · <code>resume aster</code> · <code>cashout jupiter</code> · <code>cashout aster</code> · <code>stop</code>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <span>🍔 Aster Trader Board · <a href="/">Dashboard</a> · <a href="/bots/">Bots</a></span>
+    <span>⚠️ Trading bots carry risk. Never invest more than you can afford to lose.</span>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit.min.js"></script>
+  <script src="/js/unified.js"></script>
+</body>
+</html>

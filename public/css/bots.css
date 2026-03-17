@@ -237,3 +237,123 @@
 
 /* ── Misc ── */
 .loading-msg { padding: 2rem; text-align: center; color: rgba(255,255,255,0.3); font-size: 13px; font-family: var(--font-mono); }
+
+/* ── Solana warning ── */
+.solana-warning-card {
+  display: flex; gap: 1rem; align-items: flex-start;
+  background: rgba(255,165,0,0.06);
+  border: 2px solid rgba(255,165,0,0.3);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-top: 12px;
+}
+.solana-warning-icon { font-size: 1.75rem; flex-shrink: 0; }
+.solana-warning-title {
+  font-family: var(--font-display); font-size: 14px;
+  letter-spacing: 0.04em; color: #ffb347;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.solana-warning-text {
+  font-family: var(--font-mono); font-size: 12px;
+  color: rgba(255,255,255,0.5); line-height: 1.7;
+  margin-bottom: 1rem;
+}
+.solana-warning-text strong { color: rgba(255,255,255,0.75); }
+.solana-warning-options { display: flex; flex-direction: column; gap: 8px; }
+.solana-option-btn {
+  display: block; padding: 10px 14px;
+  background: rgba(255,165,0,0.1);
+  border: 1px solid rgba(255,165,0,0.3);
+  border-radius: 4px;
+  font-family: var(--font-mono); font-size: 12px;
+  color: #ffb347; text-decoration: none;
+  cursor: pointer; transition: all 0.1s; text-align: left;
+}
+.solana-option-btn:hover { background: rgba(255,165,0,0.18); border-color: rgba(255,165,0,0.5); }
+.solana-option-btn.secondary {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+}
+.solana-option-btn.secondary:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); }
+
+/* ── Jupiter / Solana strategy card ── */
+.strategy-card-sol { border-color: rgba(153,69,255,0.4) !important; }
+.strategy-card-sol:hover { border-color: #9945ff !important; box-shadow: 4px 4px 0 rgba(153,69,255,0.3) !important; }
+.strategy-card-sol.selected { border-color: #9945ff !important; background: rgba(153,69,255,0.07) !important; }
+.strategy-badge-sol {
+  position: absolute; top: -10px; right: 12px;
+  font-family: var(--font-display); font-size: 11px; letter-spacing: 0.06em;
+  background: #9945ff; color: var(--white);
+  padding: 2px 10px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.strategy-card-sol .strategy-name { color: #c89bff; }
+
+/* ── Chain tab switcher ────────────────────────────────────────────────── */
+.chain-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+.chain-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.45);
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chain-tab:hover {
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.06);
+}
+.chain-tab.active[data-chain="aster"] {
+  border-color: #f0b90b;
+  background: rgba(240,185,11,0.1);
+  color: #f0b90b;
+}
+.chain-tab.active[data-chain="jupiter"] {
+  border-color: #9945ff;
+  background: rgba(153,69,255,0.1);
+  color: #c89bff;
+}
+.chain-tab-icon {
+  font-size: 16px;
+}
+.chain-tab-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  opacity: 0.7;
+}
+
+/* Jupiter strategy card variant */
+.strategy-card-sol {
+  border-color: rgba(153,69,255,0.25) !important;
+}
+.strategy-card-sol:hover,
+.strategy-card-sol.selected {
+  border-color: #9945ff !important;
+  box-shadow: 0 0 0 1px #9945ff33 !important;
+}
+.strategy-badge-sol {
+  position: absolute;
+  top: 8px; right: 8px;
+  font-family: var(--font-display);
+  font-size: 9px; letter-spacing: 0.08em;
+  padding: 2px 8px; border-radius: 20px;
+  background: rgba(153,69,255,0.15);
+  color: #c89bff;
+  border: 1px solid rgba(153,69,255,0.3);
+}

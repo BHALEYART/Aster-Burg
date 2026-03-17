@@ -303,3 +303,73 @@ setInterval(async () => {
 }, 30_000);
 
 init();
+
+// ── Bot terminal ──────────────────────────────────────────────────────────────
+let term     = null;
+let fitAddon = null;
+let ws       = null;
+
+function initTerminal() {
+  term = new Terminal({
+    cursorBlink: true,
+    theme: {
+      background: '#0d0d0d', foreground: '#fef9ee',
+      cursor: '#ffe135', selection: 'rgba(255,225,53,0.3)',
+      green: '#00c86e', yellow: '#ffe135', red: '#ff3b3b',
+    },
+    fontFamily: 'Courier New, monospace',
+    fontSize: 13, lineHeight: 1.4, scrollback: 500,
+  });
+  fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(document.getElementById('xterm-container'));
+  fitAddon.fit();
+  term.writeln('\x1b[33m🤖 AsterBoard Bot Terminal\x1b[0m');
+  term.writeln('\x1b[90mEnter your bot host:port and click Connect\x1b[0m');
+  term.writeln('');
+
+  let buf = '';
+  term.onKey(({ key, domEvent }) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (domEvent.keyCode === 13)      { term.writeln(''); ws.send(buf); buf = ''; }
+    else if (domEvent.keyCode === 8)  { if (buf.length) { buf = buf.slice(0,-1); term.write('\b \b'); } }
+    else                              { buf += key; term.write(key); }
+  });
+  window.addEventListener('resize', () => fitAddon?.fit());
+}
+
+document.getElementById('btn-connect').addEventListener('click', () => {
+  const host = document.getElementById('terminal-host').value.trim() || 'localhost:8080';
+  if (ws) ws.close();
+  if (!term) initTerminal();
+  term.writeln(`\x1b[90mConnecting to ws://${host}...\x1b[0m`);
+  ws = new WebSocket(`ws://${host}`);
+  ws.onopen = () => {
+    term.writeln('\x1b[32m✅ Connected\x1b[0m');
+    document.getElementById('terminal-title').textContent = `bot — ws://${host}`;
+    document.getElementById('btn-connect').style.display    = 'none';
+    document.getElementById('btn-disconnect').style.display = 'inline';
+  };
+  ws.onmessage = e => {
+    try { const d = JSON.parse(e.data); term.write(d.msg || ''); }
+    catch(_) { term.write(e.data); }
+  };
+  ws.onerror = () => {
+    term.writeln('\x1b[31m❌ Connection failed. Is the bot running?\x1b[0m');
+    term.writeln('\x1b[90mRun: docker compose up -d\x1b[0m');
+  };
+  ws.onclose = () => {
+    term.writeln('\x1b[90m— Disconnected —\x1b[0m');
+    document.getElementById('terminal-title').textContent = 'bot — not connected';
+    document.getElementById('btn-connect').style.display    = 'inline';
+    document.getElementById('btn-disconnect').style.display = 'none';
+    ws = null;
+  };
+});
+
+document.getElementById('btn-disconnect').addEventListener('click', () => {
+  if (ws) { ws.close(); ws = null; }
+});
+
+// Init terminal on page load so it's ready
+initTerminal();
