@@ -3,113 +3,313 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Primary -->
-  <title>AsterBoard — Live Aster DEX Leaderboard & Top Gainers</title>
-  <meta name="description" content="Real-time leaderboard for Aster DEX. Track the top 10 traders by PnL, live top gainers, and best trades across 1h, 1d, 1w and 1m timeframes." />
-  <meta name="keywords" content="Aster DEX leaderboard, Aster DEX top traders, Aster DEX gainers, ASTER token, perpetual DEX leaderboard, on-chain traders" />
-  <meta name="robots" content="index, follow" />
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="AsterBoard — Live Aster DEX Leaderboard & Top Gainers" />
-  <meta property="og:description" content="Real-time leaderboard for Aster DEX. Track the top 10 traders by PnL, live top gainers, and best trades across 1h, 1d, 1w and 1m timeframes." />
-  <meta property="og:image" content="/asterboard-preview.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:site_name" content="AsterBoard" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="AsterBoard — Live Aster DEX Leaderboard & Top Gainers" />
-  <meta name="twitter:description" content="Real-time leaderboard for Aster DEX. Track the top 10 traders by PnL, live top gainers, and best trades across 1h, 1d, 1w and 1m timeframes." />
-  <meta name="twitter:image" content="/asterboard-preview.png" />
-
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🍔</text></svg>" />
+  <title>AsterBoard — Bot Builder</title>
+  <meta name="description" content="Configure and download a ready-to-run Aster DEX trading bot. DCA, copy trading, momentum, and scalper strategies. Fund with your wallet. Runs in Docker." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🤖</text></svg>" />
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/bots.css" />
 </head>
 <body>
 
   <header class="header">
     <div class="header-inner">
       <div class="header-brand">
-        <span class="brand-emoji">🍔</span>
-        <span class="brand-name">ASTER<span class="brand-accent">BOARD</span></span>
+        <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+          <span class="brand-emoji">🍔</span>
+          <span class="brand-name">ASTER<span class="brand-accent">BOARD</span></span>
+        </a>
       </div>
       <div class="header-right">
-        <a href="/bots/" class="nav-btn">🤖 Bots</a>
-        <a href="/bots/unified/" class="nav-btn">⚡ Unified</a>
-        <div class="live-pill">
-          <span class="live-dot" id="live-dot"></span>
-          <span class="live-label" id="live-label">Connecting...</span>
-        </div>
-        <div class="tf-tabs" id="tf-tabs">
-          <button class="tab active" data-tf="1h">1h</button>
-          <button class="tab" data-tf="1d">1d</button>
-          <button class="tab" data-tf="1w">1w</button>
-          <button class="tab" data-tf="1m">1m</button>
-        </div>
+        <nav style="display:flex;gap:4px;align-items:center;">
+          <a href="/" class="nav-btn">📈 Dashboard</a>
+          <a href="/bots/" class="nav-btn active">🤖 Bots</a>
+          <a href="/bots/unified/" class="nav-btn">⚡ Unified</a>
+          <button class="wallet-connect-btn" id="wallet-connect-btn" onclick="connectWallet()">
+            Connect Wallet
+          </button>
+        </nav>
       </div>
     </div>
   </header>
 
-  <div class="ticker-wrap">
-    <div class="ticker-inner" id="ticker-inner">
-      🍔 LOADING MARKET DATA &nbsp;💩&nbsp; PLEASE WAIT 🍔 LOADING MARKET DATA &nbsp;💩&nbsp; PLEASE WAIT &nbsp;&nbsp;
+  <!-- Wallet picker modal -->
+  <div class="modal-overlay" id="wallet-modal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">🔗 Connect Wallet</span>
+        <button class="modal-close" onclick="closeWalletModal()">✕</button>
+      </div>
+      <div class="modal-sub">Choose your wallet to connect to AsterBoard Bots</div>
+      <div class="wallet-grid" id="wallet-grid">
+        <button class="wallet-option" data-wallet="metamask">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" />
+          <span>MetaMask</span>
+          <span class="wallet-tag">EVM</span>
+        </button>
+        <button class="wallet-option" data-wallet="rabby">
+          <span class="wallet-emoji">🐰</span>
+          <span>Rabby</span>
+          <span class="wallet-tag">EVM</span>
+        </button>
+        <button class="wallet-option" data-wallet="binance">
+          <span class="wallet-emoji">🟡</span>
+          <span>Binance Wallet</span>
+          <span class="wallet-tag">EVM</span>
+        </button>
+        <button class="wallet-option" data-wallet="okx">
+          <span class="wallet-emoji">⬛</span>
+          <span>OKX Wallet</span>
+          <span class="wallet-tag">EVM</span>
+        </button>
+        <button class="wallet-option" data-wallet="phantom">
+          <span class="wallet-emoji">👻</span>
+          <span>Phantom</span>
+          <span class="wallet-tag">Solana</span>
+        </button>
+        <button class="wallet-option" data-wallet="walletconnect">
+          <span class="wallet-emoji">🔵</span>
+          <span>WalletConnect</span>
+          <span class="wallet-tag">300+ wallets</span>
+        </button>
+      </div>
+      <div class="modal-note">⚠️ Your wallet is used only to fund the bot pool. We never store your keys.</div>
     </div>
   </div>
 
   <main class="main">
 
-    <div class="stat-bar">
-      <div class="stat-card">
-        <div class="stat-emoji">📊</div>
-        <div class="stat-label">Symbols</div>
-        <div class="stat-value" id="stat-symbols">—</div>
+    <div class="bots-hero">
+      <h1 class="bots-hero-title">🤖 Bot Builder</h1>
+      <p class="bots-hero-sub">Connect your wallet → fund a bot pool → download → run with one Docker command.<br>Connect back here to watch it trade live in your browser.</p>
+    </div>
+
+    <!-- Wallet status bar (hidden until connected) -->
+    <div class="wallet-status-bar" id="wallet-status-bar" style="display:none">
+      <div class="wallet-status-left">
+        <span class="wallet-status-dot"></span>
+        <span id="wallet-address-display">0x...</span>
+        <span class="wallet-chain-badge" id="wallet-chain-badge">BNB Chain</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-emoji">🚀</div>
-        <div class="stat-label">Top gainer</div>
-        <div class="stat-value up" id="stat-top-gainer">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-emoji">💩</div>
-        <div class="stat-label">Top loser</div>
-        <div class="stat-value down" id="stat-top-loser">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-emoji">📈</div>
-        <div class="stat-label">Avg change</div>
-        <div class="stat-value" id="stat-avg">—</div>
+      <div class="wallet-status-right">
+        <span class="wallet-balance-label" id="wallet-balance-label">USDT Balance:</span>
+        <span class="wallet-balance-val" id="wallet-usdt-balance">—</span>
+        <span class="wallet-balance-extra" id="wallet-sol-balance" style="display:none"></span>
+        <button class="wallet-disconnect-btn" onclick="disconnectWallet()">Disconnect</button>
       </div>
     </div>
 
-    <section class="section">
-      <div class="section-header">
-        <h2 class="section-title">🚀 Top gainers <span class="tf-badge" id="gainer-tf-badge">1h</span></h2>
-        <span class="source-badge" id="gainer-source">live</span>
-      </div>
-      <div class="chart-card">
-        <div class="chart-wrap"><canvas id="gainersChart"></canvas></div>
-      </div>
-      <div class="gainer-list" id="gainer-list"></div>
-    </section>
+    <!-- Step 1: Pick chain + strategy -->
+    <div class="step-block">
+      <div class="step-label">STEP 1 — CHOOSE CHAIN &amp; STRATEGY</div>
 
-    <section class="section">
-      <div class="section-header">
-        <h2 class="section-title">💥 Best trades <span class="tf-badge" id="trades-tf-badge">1h</span></h2>
+      <!-- Chain tab bar -->
+      <div class="chain-tabs" id="chain-tabs">
+        <button class="chain-tab active" data-chain="aster" onclick="switchChain('aster')">
+          <span class="chain-tab-icon">⬡</span> Aster <span class="chain-tab-sub">BNB Chain · Perpetuals</span>
+        </button>
+        <button class="chain-tab" data-chain="jupiter" onclick="switchChain('jupiter')">
+          <span class="chain-tab-icon">◎</span> Jupiter <span class="chain-tab-sub">Solana · Spot Swaps</span>
+        </button>
       </div>
-      <div class="card" id="trades-list">
-        <div class="loading-msg">💩 Scooping trades...</div>
-      </div>
-    </section>
 
-    <!-- Bot terminal -->
-    <section class="section">
-      <div class="section-header">
-        <h2 class="section-title">🤖 Bot terminal</h2>
-        <a href="/bots/" class="nav-btn">+ New bot</a>
+      <!-- Aster strategy grid -->
+      <div class="strategy-grid" id="strategy-grid-aster">
+        <div class="strategy-card" data-strategy="aster_dca">
+          <div class="strategy-emoji">💰</div>
+          <div class="strategy-name">DCA Bot</div>
+          <div class="strategy-desc">Buys a fixed $ amount on a schedule. Averages your entry over time.</div>
+          <ul class="strategy-features">
+            <li>✅ Fixed interval buying</li>
+            <li>✅ Per-symbol or basket</li>
+            <li>✅ Auto stop-loss</li>
+            <li>✅ Budget cap</li>
+          </ul>
+        </div>
+        <div class="strategy-card" data-strategy="aster_copy">
+          <div class="strategy-emoji">👑</div>
+          <div class="strategy-name">Copy Bot</div>
+          <div class="strategy-desc">Mirrors the top trader on the Aster leaderboard. When they open, you open.</div>
+          <ul class="strategy-features">
+            <li>✅ Follows #1 trader by default</li>
+            <li>✅ Configurable position size %</li>
+            <li>✅ Max drawdown guard</li>
+            <li>✅ Blacklist symbols</li>
+          </ul>
+        </div>
+        <div class="strategy-card" data-strategy="aster_momentum">
+          <div class="strategy-emoji">🚀</div>
+          <div class="strategy-name">Momentum Bot</div>
+          <div class="strategy-desc">Watches top gainers. Buys breakouts above your threshold, exits on reversal.</div>
+          <ul class="strategy-features">
+            <li>✅ Configurable % threshold</li>
+            <li>✅ Auto take-profit</li>
+            <li>✅ Auto stop-loss</li>
+            <li>✅ Max concurrent positions</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-hot" data-strategy="aster_scalper">
+          <div class="strategy-badge-hot">🔥 HOT</div>
+          <div class="strategy-emoji">⚡</div>
+          <div class="strategy-name">Scalper Bot</div>
+          <div class="strategy-desc">Snipes 0.3% micro-moves. In and out fast. High frequency, tight stops.</div>
+          <ul class="strategy-features">
+            <li>✅ 0.3% entry threshold</li>
+            <li>✅ 60s scan interval</li>
+            <li>✅ 0.5% TP / 0.3% SL</li>
+            <li>✅ Volume filter</li>
+          </ul>
+        </div>
       </div>
+
+      <!-- Jupiter strategy grid -->
+      <div class="strategy-grid" id="strategy-grid-jupiter" style="display:none">
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_dca">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-emoji">💰</div>
+          <div class="strategy-name">DCA Bot</div>
+          <div class="strategy-desc">Buys a fixed USDC amount on a schedule via Jupiter. Best route across all Solana DEXs.</div>
+          <ul class="strategy-features">
+            <li>✅ Fixed interval swaps</li>
+            <li>✅ Any SPL token pair</li>
+            <li>✅ Jupiter v6 routing</li>
+            <li>✅ Budget cap</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_copy">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-emoji">👑</div>
+          <div class="strategy-name">Copy Bot</div>
+          <div class="strategy-desc">Mirrors top Solana wallets by monitoring on-chain swap activity in real time.</div>
+          <ul class="strategy-features">
+            <li>✅ Follows target wallet</li>
+            <li>✅ Mirrors swap ratios</li>
+            <li>✅ Max drawdown guard</li>
+            <li>✅ Token blacklist</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol" data-strategy="jupiter_momentum">
+          <div class="strategy-emoji">🚀</div>
+          <div class="strategy-name">Momentum Bot</div>
+          <div class="strategy-desc">Watches Jupiter price feeds. Swaps into tokens breaking out above your threshold.</div>
+          <ul class="strategy-features">
+            <li>✅ Configurable % threshold</li>
+            <li>✅ Auto take-profit swap back</li>
+            <li>✅ Stop-loss swap back</li>
+            <li>✅ Max concurrent swaps</li>
+          </ul>
+        </div>
+        <div class="strategy-card strategy-card-sol strategy-card-hot" data-strategy="jupiter_scalper">
+          <div class="strategy-badge-sol">◎ SOLANA</div>
+          <div class="strategy-badge-hot" style="right:auto;left:8px">🔥 HOT</div>
+          <div class="strategy-emoji">⚡</div>
+          <div class="strategy-name">Scalper Bot</div>
+          <div class="strategy-desc">Snipes micro-moves on Solana pairs via Jupiter. Fast in/out, tight slippage.</div>
+          <ul class="strategy-features">
+            <li>✅ 0.3% entry threshold</li>
+            <li>✅ Jupiter best-route always</li>
+            <li>✅ 0.5% TP / 0.3% SL</li>
+            <li>✅ Daily swap cap</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Fund pool -->
+    <div class="step-block" id="fund-block" style="display:none">
+      <div class="step-label">STEP 2 — FUND BOT POOL <span class="step-optional">(recommended)</span></div>
+      <div class="fund-card card" id="fund-inner">
+        <div class="fund-explainer">
+          <div class="fund-explainer-title">🔐 How the funded pool works</div>
+          <div class="fund-explainer-body" id="fund-explainer-body">A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.</div>
+        </div>
+        <!-- Token selector — only shown on Jupiter tab -->
+        <div class="token-tabs" id="token-tabs" style="display:none">
+          <button class="token-tab active" data-token="USDC" onclick="switchJupiterToken('USDC')">
+            <span class="token-tab-icon">💵</span> USDC
+          </button>
+          <button class="token-tab" data-token="USDT" onclick="switchJupiterToken('USDT')">
+            <span class="token-tab-icon">💲</span> USDT
+          </button>
+        </div>
+
+        <div class="fund-form">
+          <div class="form-group">
+            <label class="form-label" id="fund-amount-label">USDT amount to fund</label>
+            <input class="form-input" id="fund-amount" type="number" placeholder="100" min="10" />
+            <div class="form-hint" id="fund-amount-hint">ℹ️ Minimum $10. The bot will never spend more than this.</div>
+          </div>
+          <div class="fund-wallet-preview" id="fund-wallet-preview" style="display:none">
+            <div class="fund-wallet-label">🏦 Bot pool wallet (generated)</div>
+            <div class="fund-wallet-addr" id="fund-wallet-addr">—</div>
+            <div class="fund-wallet-note">This address is included in your bot's .env file. Only you control it.</div>
+          </div>
+          <div class="fund-btns">
+            <button class="btn-fund" id="btn-generate-pool" onclick="generateBotPool()">⚡ Generate Bot Wallet</button>
+            <button class="btn-fund btn-fund-transfer" id="btn-fund-transfer" style="display:none" onclick="fundBotPool()">💸 Transfer to Bot</button>
+            <button class="btn-skip" onclick="skipFunding()">Skip — I'll use API key auth instead</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Solana warning (shown instead of fund form for Phantom users) -->
+      <div id="solana-warning" style="display:none" class="solana-warning-card">
+        <div class="solana-warning-icon">⚠️</div>
+        <div class="solana-warning-body">
+          <div class="solana-warning-title">Solana wallet detected</div>
+          <div class="solana-warning-text">
+            You're on the <strong>Aster (BNB Chain)</strong> tab, but Phantom is a Solana wallet.
+            The Aster funded pool requires BNB Chain USDT.<br><br>
+            Switch to the <strong>◎ Jupiter tab</strong> for Solana bots, or:
+          </div>
+          <div class="solana-warning-options">
+            <a class="solana-option-btn" href="https://www.asterdex.com/en/trade/pro/futures/BTCUSDT" target="_blank" rel="noopener">
+              🌉 Bridge on Aster → deposit USDT to BNB Chain, then reconnect with MetaMask
+            </a>
+            <button class="solana-option-btn secondary" onclick="skipFunding()">
+              🔑 Skip pool — use my Aster API key instead (already have funds on Aster)
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step 3: Configure -->
+    <div class="step-block" id="config-block" style="display:none">
+      <div class="step-label" id="config-step-label">STEP 3 — CONFIGURE</div>
+      <div class="config-grid">
+        <div class="config-form card" id="config-form"></div>
+        <div class="config-preview card">
+          <div class="preview-title">⚙️ .env preview</div>
+          <pre class="config-pre" id="config-pre"># Fill in the form to see your config</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Download -->
+    <div class="step-block" id="download-block" style="display:none">
+      <div class="step-label" id="download-step-label">STEP 4 — DOWNLOAD & RUN</div>
+      <div class="card download-card">
+        <div class="download-main">
+          <div>
+            <div class="download-title">🤖 Your bot is ready</div>
+            <div class="download-sub">Unzip, then run one command. That's it.</div>
+            <div class="download-cmd">docker compose up -d</div>
+          </div>
+          <button class="btn-download" id="btn-download">⬇️ Download Bot</button>
+        </div>
+        <div class="download-steps">
+          <div class="dl-step"><span class="dl-num">1</span> Install <a href="https://docs.docker.com/get-docker/" target="_blank" rel="noopener">Docker Desktop</a> if you haven't</div>
+          <div class="dl-step"><span class="dl-num">2</span> Unzip the downloaded file anywhere on your computer</div>
+          <div class="dl-step"><span class="dl-num">3</span> Open a terminal in that folder and run <code>docker compose up -d</code></div>
+          <div class="dl-step"><span class="dl-num">4</span> Come back here and connect the terminal below to watch it live</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Terminal -->
+    <div class="step-block" id="terminal-block" style="display:none">
+      <div class="step-label" id="terminal-step-label">STEP 5 — LIVE TERMINAL</div>
       <div class="card terminal-card">
         <div class="terminal-toolbar">
           <div class="terminal-dots">
@@ -125,20 +325,25 @@
           </div>
         </div>
         <div id="xterm-container"></div>
-        <div class="terminal-hint">💡 <code>help</code> · <code>status</code> · <code>pause</code> · <code>resume</code> · <code>stop</code> — <a href="/bots/" style="color:var(--yellow)">Build a bot →</a></div>
+        <div class="terminal-hint">💡 <code>help</code> · <code>status</code> · <code>pause</code> · <code>resume</code> · <code>stop</code> · <code>withdraw</code> (returns funds to your wallet)</div>
       </div>
-    </section>
+    </div>
+
   </main>
 
   <footer class="footer">
-    <span>🍔 Aster Trader Board · Data via <a href="https://fapi.asterdex.com" target="_blank" rel="noopener">fapi.asterdex.com</a></span>
-    <span id="last-updated"></span>
+    <span>🍔 Aster Trader Board · <a href="/">Dashboard</a></span>
+    <span>⚠️ Trading bots carry risk. Never invest more than you can afford to lose.</span>
   </footer>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <!-- ethers.js v6 for wallet connection -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <!-- JSZip for client-side zip generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- xterm.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit.min.js"></script>
-  <script src="/js/app.js"></script>
+  <script src="/js/bots.js"></script>
 </body>
 </html>
