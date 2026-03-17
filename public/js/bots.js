@@ -134,12 +134,14 @@ async function onWalletConnected(address, name) {
   // Fetch USDT balance
   await refreshUSDTBalance();
 
-  // Solana/Phantom — show bridge warning instead of fund form
-  const fundBlock    = document.getElementById('fund-block');
-  const fundInner    = document.getElementById('fund-inner');
-  const solanaWarn   = document.getElementById('solana-warning');
+  // Show fund block. For Phantom:
+  //   - On Aster tab  -> show bridge warning (Phantom can't fund BNB Chain pool)
+  //   - On Jupiter tab -> show fund form normally (Phantom is correct here)
+  const fundBlock  = document.getElementById('fund-block');
+  const fundInner  = document.getElementById('fund-inner');
+  const solanaWarn = document.getElementById('solana-warning');
   if (fundBlock) fundBlock.style.display = 'block';
-  if (walletType === 'phantom') {
+  if (walletType === 'phantom' && activeChain === 'aster') {
     if (fundInner)  fundInner.style.display  = 'none';
     if (solanaWarn) solanaWarn.style.display = 'block';
   } else {
@@ -304,17 +306,18 @@ function switchChain(chain) {
     document.getElementById(id).style.display = 'none';
   });
 
-  // On Jupiter tab: show fund block only if wallet connected AND Phantom; hide Solana warning on Aster tab
+  // Update fund block visibility when switching tabs (if wallet already connected)
   if (walletAddress) {
     const isPhantom = walletType === 'phantom';
-    if (chain === 'jupiter' && isPhantom) {
-      document.getElementById('fund-block').style.display   = 'block';
-      document.getElementById('fund-inner').style.display   = 'block';
-      document.getElementById('solana-warning').style.display = 'none';
-    } else if (chain === 'aster' && isPhantom) {
-      document.getElementById('fund-block').style.display   = 'block';
-      document.getElementById('fund-inner').style.display   = 'none';
+    document.getElementById('fund-block').style.display = 'block';
+    if (isPhantom && chain === 'aster') {
+      // Phantom on Aster tab -> show bridge warning
+      document.getElementById('fund-inner').style.display    = 'none';
       document.getElementById('solana-warning').style.display = 'block';
+    } else {
+      // EVM wallet on any tab, OR Phantom on Jupiter tab -> show fund form
+      document.getElementById('fund-inner').style.display    = 'block';
+      document.getElementById('solana-warning').style.display = 'none';
     }
   }
 }
@@ -590,6 +593,36 @@ function renderConfigForm(strategy) {
 
   html += `<button class="btn-generate" id="btn-generate">⚡ Generate Bot Package</button>`;
   el.innerHTML = html;
+
+  // ── Auto-fill from funded pool + connected wallet ──────────────────────────
+  if (botPoolWallet) {
+    // Jupiter bots: fill private key with pool wallet's key
+    const pkField = document.getElementById('f_privateKey');
+    if (pkField && !pkField.value) pkField.value = botPoolWallet.privateKey;
+
+    // Cashout address: use the connected wallet (where profits go back to)
+    const cashoutField = document.getElementById('f_cashoutAddress');
+    if (cashoutField && !cashoutField.value && walletAddress) {
+      cashoutField.value = walletAddress;
+    }
+
+    // Funded amount → use as position size / buy amount if field is empty
+    const fundAmt = parseFloat(document.getElementById('fund-amount')?.value || 0);
+    if (fundAmt > 0) {
+      const sizeField     = document.getElementById('f_positionSize') || document.getElementById('f_inputAmount') || document.getElementById('f_buyAmount');
+      const budgetField   = document.getElementById('f_budgetCap');
+      if (sizeField   && !sizeField.value)   sizeField.value   = Math.min(fundAmt * 0.1, 50).toFixed(2); // 10% of pool per trade, max $50
+      if (budgetField && !budgetField.value) budgetField.value = fundAmt.toFixed(2); // full pool = budget cap
+    }
+  }
+
+  // Aster bots: if wallet connected show address hint in apiKey field
+  if (walletAddress && !strategy.startsWith('jupiter')) {
+    const apiKeyField = document.getElementById('f_apiKey');
+    if (apiKeyField && !apiKeyField.value && apiKeyField.placeholder === '0xYourApiKey') {
+      apiKeyField.placeholder = walletAddress; // just a hint, not pre-filled
+    }
+  }
 
   el.querySelectorAll('.form-input, .form-select').forEach(i => i.addEventListener('input', updateConfigPreview));
   document.getElementById('btn-generate').addEventListener('click', generateBot);
