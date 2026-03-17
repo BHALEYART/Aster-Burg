@@ -91,8 +91,9 @@
         <span class="wallet-chain-badge" id="wallet-chain-badge">BNB Chain</span>
       </div>
       <div class="wallet-status-right">
-        <span class="wallet-balance-label">USDT Balance:</span>
+        <span class="wallet-balance-label" id="wallet-balance-label">USDT Balance:</span>
         <span class="wallet-balance-val" id="wallet-usdt-balance">—</span>
+        <span class="wallet-balance-extra" id="wallet-sol-balance" style="display:none"></span>
         <button class="wallet-disconnect-btn" onclick="disconnectWallet()">Disconnect</button>
       </div>
     </div>
@@ -219,13 +220,23 @@
       <div class="fund-card card" id="fund-inner">
         <div class="fund-explainer">
           <div class="fund-explainer-title">🔐 How the funded pool works</div>
-          <div class="fund-explainer-body">A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.</div>
+          <div class="fund-explainer-body" id="fund-explainer-body">A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.</div>
         </div>
+        <!-- Token selector — only shown on Jupiter tab -->
+        <div class="token-tabs" id="token-tabs" style="display:none">
+          <button class="token-tab active" data-token="USDC" onclick="switchJupiterToken('USDC')">
+            <span class="token-tab-icon">💵</span> USDC
+          </button>
+          <button class="token-tab" data-token="USDT" onclick="switchJupiterToken('USDT')">
+            <span class="token-tab-icon">💲</span> USDT
+          </button>
+        </div>
+
         <div class="fund-form">
           <div class="form-group">
-            <label class="form-label">USDT amount to fund</label>
+            <label class="form-label" id="fund-amount-label">USDT amount to fund</label>
             <input class="form-input" id="fund-amount" type="number" placeholder="100" min="10" />
-            <div class="form-hint">ℹ️ Minimum $10. The bot will never spend more than this.</div>
+            <div class="form-hint" id="fund-amount-hint">ℹ️ Minimum $10. The bot will never spend more than this.</div>
           </div>
           <div class="fund-wallet-preview" id="fund-wallet-preview" style="display:none">
             <div class="fund-wallet-label">🏦 Bot pool wallet (generated)</div>
@@ -234,7 +245,7 @@
           </div>
           <div class="fund-btns">
             <button class="btn-fund" id="btn-generate-pool" onclick="generateBotPool()">⚡ Generate Bot Wallet</button>
-            <button class="btn-fund btn-fund-transfer" id="btn-fund-transfer" style="display:none" onclick="fundBotPool()">💸 Transfer USDT to Bot</button>
+            <button class="btn-fund btn-fund-transfer" id="btn-fund-transfer" style="display:none" onclick="fundBotPool()">💸 Transfer to Bot</button>
             <button class="btn-skip" onclick="skipFunding()">Skip — I'll use API key auth instead</button>
           </div>
         </div>
