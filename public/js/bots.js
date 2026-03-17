@@ -13,6 +13,7 @@ let botPoolWallet   = null; // { address, privateKey } — generated client-side
 let selectedStrategy = null;
 let fundingEnabled   = false;
 let activeChain      = 'aster'; // 'aster' | 'jupiter'
+let jupiterToken     = 'USDC';   // 'USDC' | 'USDT' — which token Jupiter bots spend
 
 // ── Terminal state ────────────────────────────────────────────────────────────
 let term     = null;
@@ -152,6 +153,23 @@ async function onWalletConnected(address, name) {
   console.log(`[wallet] Connected: ${name} — ${address}`);
 }
 
+function updateSolanaBalanceDisplay(data) {
+  if (!data) return;
+  const isPrimary = jupiterToken; // 'USDC' or 'USDT'
+  const primary   = isPrimary === 'USDC' ? data.usdc : data.usdt;
+  const secondary = isPrimary === 'USDC' ? data.usdt : data.usdc;
+  const secLabel  = isPrimary === 'USDC' ? 'USDT' : 'USDC';
+
+  document.getElementById('wallet-balance-label').textContent = `${isPrimary} Balance:`;
+  document.getElementById('wallet-usdt-balance').textContent  = `$${primary}`;
+
+  const extra = document.getElementById('wallet-sol-balance');
+  if (extra) {
+    extra.style.display = 'inline';
+    extra.textContent   = `SOL: ${data.sol}  ${secLabel}: $${secondary}`;
+  }
+}
+
 const USDT_MAP = {
   56n:    '0x55d398326f99059fF775485246999027B3197955',
   1n:     '0xdAC17F958D2ee523a2206206994597C13D831ec7',
@@ -169,16 +187,8 @@ async function refreshUSDTBalance() {
       const r    = await fetch(`/api/solana-balance?address=${walletAddress}`);
       const data = await r.json();
       // Show USDC as primary balance (Jupiter bots use USDC)
-      document.getElementById('wallet-balance-label').textContent = 'USDC Balance:';
-      document.getElementById('wallet-usdt-balance').textContent  = `$${data.usdc}`;
-      // Show SOL + USDT as secondary info
-      const extra = document.getElementById('wallet-sol-balance');
-      if (extra) {
-        extra.style.display  = 'inline';
-        extra.textContent    = `SOL: ${data.sol}  USDT: $${data.usdt}`;
-      }
-      // Store balances for funding flow
       window._solanaBalances = data;
+      updateSolanaBalanceDisplay(data);
     } catch(e) {
       document.getElementById('wallet-usdt-balance').textContent = 'n/a';
     }
@@ -292,11 +302,17 @@ async function fundBotPool() {
 
 async function fundBotPoolSolana() {
   const amount = parseFloat(document.getElementById('fund-amount').value);
-  if (!amount || amount < 10) { alert('Minimum 10 USDC.'); return; }
+  if (!amount || amount < 10) { alert(`Minimum 10 ${jupiterToken}.`); return; }
 
-  const usdcBalance = parseFloat(window._solanaBalances?.usdc || 0);
-  if (usdcBalance < amount) {
-    alert(`Insufficient USDC.\nYou have: $${usdcBalance} USDC\nNeeded: $${amount} USDC`);
+  const MINTS = {
+    USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+  };
+  const tokenKey     = jupiterToken; // 'USDC' or 'USDT'
+  const mintAddr     = MINTS[tokenKey];
+  const tokenBalance = parseFloat(window._solanaBalances?.[tokenKey.toLowerCase()] || 0);
+  if (tokenBalance < amount) {
+    alert(`Insufficient ${tokenKey}.\nYou have: $${tokenBalance} ${tokenKey}\nNeeded: $${amount} ${tokenKey}`);
     return;
   }
 
@@ -311,18 +327,18 @@ async function fundBotPoolSolana() {
     const dest = botPoolWallet.address;
 
     const confirmed = confirm(
-      `Send ${amount} USDC to your bot pool wallet?\n\n` +
+      `Send ${amount} ${tokenKey} to your bot pool wallet?\n\n` +
       `Bot wallet: ${dest}\n\n` +
-      `This will open Phantom's send UI. Paste the above address and send ${amount} USDC.\n\n` +
+      `This will open Phantom's send UI. Paste the above address and send ${amount} ${tokenKey}.\n\n` +
       `Click OK to copy the address to your clipboard.`
     );
 
     if (confirmed) {
       await navigator.clipboard.writeText(dest).catch(() => {});
       // Try to open Phantom's send deeplink
-      window.open(`https://phantom.app/ul/transfer?mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&to=${dest}`, '_blank');
+      window.open(`https://phantom.app/ul/transfer?mint=${mintAddr}&amount=${amount}&to=${dest}`, '_blank');
 
-      btn.textContent = '✅ Address copied — send in Phantom';
+      btn.textContent = `✅ Address copied — send ${tokenKey} in Phantom`;
       btn.disabled    = false;
       btn.style.background = 'rgba(0,200,110,0.25)';
 
@@ -342,6 +358,41 @@ async function fundBotPoolSolana() {
     btn.textContent = '💸 Send USDC to Bot (Solana)';
     btn.disabled    = false;
     alert('Error: ' + e.message);
+  }
+}
+
+
+function switchJupiterToken(token) {
+  jupiterToken = token;
+
+  // Update tab active states
+  document.querySelectorAll('.token-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.token === token);
+  });
+
+  // Update balance display if Phantom connected
+  if (walletType === 'phantom' && window._solanaBalances) {
+    updateSolanaBalanceDisplay(window._solanaBalances);
+  }
+
+  // Update fund form labels + button
+  updateFundFormForChain('jupiter', token);
+
+  // Update inputMint in config form if already rendered
+  const MINTS = {
+    USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+  };
+  const inputMintField = document.getElementById('f_inputMint');
+  if (inputMintField) {
+    inputMintField.value = MINTS[token];
+    updateConfigPreview();
+  }
+  // Update inputAmount label
+  const inputAmountField = document.getElementById('f_inputAmount');
+  if (inputAmountField) {
+    const lbl = inputAmountField.previousElementSibling;
+    if (lbl && lbl.classList.contains('form-label')) lbl.textContent = `Amount per swap (${token})`;
   }
 }
 
@@ -393,25 +444,30 @@ function switchChain(chain) {
       document.getElementById('solana-warning').style.display = 'none';
     }
   }
+  // Show token tabs only on Jupiter tab
+  const tokenTabs = document.getElementById('token-tabs');
+  if (tokenTabs) tokenTabs.style.display = chain === 'jupiter' ? 'flex' : 'none';
+
   // Update fund form labels for chain
   updateFundFormForChain(chain);
 }
 
-function updateFundFormForChain(chain) {
+function updateFundFormForChain(chain, token) {
   const isJupiter = chain === 'jupiter';
+  const tok       = token || jupiterToken;
   const label     = document.getElementById('fund-amount-label');
   const hint      = document.getElementById('fund-amount-hint');
   const explainer = document.getElementById('fund-explainer-body');
   const transferBtn = document.getElementById('btn-fund-transfer');
 
-  if (label)   label.textContent = isJupiter ? 'USDC amount to fund' : 'USDT amount to fund';
+  if (label)   label.textContent = isJupiter ? `${tok} amount to fund` : 'USDT amount to fund';
   if (hint)    hint.textContent  = isJupiter
-    ? 'ℹ️ Minimum 10 USDC. Bot uses USDC to swap on Jupiter (Solana).'
+    ? `ℹ️ Minimum 10 ${tok}. Bot uses ${tok} to swap on Jupiter (Solana).`
     : 'ℹ️ Minimum $10 USDT. The bot will never spend more than this.';
   if (explainer) explainer.textContent = isJupiter
-    ? 'A fresh Solana keypair is generated for this bot. You send USDC to it from Phantom. The bot uses only that pool for Jupiter swaps — your main wallet stays separate. Withdraw back anytime with the cashout command.'
+    ? `A fresh Solana keypair is generated for this bot. You send ${tok} to it from Phantom. The bot uses only that pool for Jupiter swaps — your main wallet stays separate. Withdraw back anytime with the cashout command.`
     : 'A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.';
-  if (transferBtn) transferBtn.textContent = isJupiter ? '💸 Send USDC to Bot (Solana)' : '💸 Transfer USDT to Bot';
+  if (transferBtn) transferBtn.textContent = isJupiter ? `💸 Send ${tok} to Bot (Solana)` : '💸 Transfer USDT to Bot';
 }
 
 // ── Strategy card clicks (both grids) ────────────────────────────────────────
@@ -705,6 +761,25 @@ function renderConfigForm(strategy) {
       const budgetField   = document.getElementById('f_budgetCap');
       if (sizeField   && !sizeField.value)   sizeField.value   = Math.min(fundAmt * 0.1, 50).toFixed(2); // 10% of pool per trade, max $50
       if (budgetField && !budgetField.value) budgetField.value = fundAmt.toFixed(2); // full pool = budget cap
+    }
+  }
+
+  // Jupiter bots: set inputMint based on selected token
+  if (strategy.startsWith('jupiter')) {
+    const MINTS = {
+      USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+    };
+    const inputMintField = document.getElementById('f_inputMint');
+    if (inputMintField) {
+      inputMintField.value       = MINTS[jupiterToken];
+      inputMintField.placeholder = MINTS[jupiterToken];
+    }
+    // Also update inputAmount label to show token name
+    const inputAmountField = document.getElementById('f_inputAmount');
+    if (inputAmountField) {
+      const lbl = inputAmountField.previousElementSibling;
+      if (lbl && lbl.classList.contains('form-label')) lbl.textContent = `Amount per swap (${jupiterToken})`;
     }
   }
 
