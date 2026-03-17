@@ -1183,7 +1183,7 @@ if (DRY_RUN) log('⚠️  DRY RUN — no real transactions will be sent');
 log('Fetching initial price baseline...');
 scan();
 setInterval(scan, SCAN_MS);
-\`;
+`;
 }
 
 function getScalperBot(c) {
