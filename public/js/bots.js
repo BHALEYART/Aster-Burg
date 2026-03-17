@@ -877,11 +877,11 @@ let stats = { trades: 0, pnl: 0, start: Date.now() };
 function getDcaBot(c) {
   return `
 const STRATEGY_NAME = 'DCA Bot';
-const SYMBOL       = process.env.SYMBOL      || '${c.symbol||'BTCUSDT'}';
+const SYMBOL       = process.env.SYMBOL      || "${c.symbol||'BTCUSDT'}";
 const BUY_AMOUNT   = parseFloat(process.env.BUYAMOUNT  || '${c.buyAmount||20}');
 const BUDGET_CAP   = parseFloat(process.env.BUDGETCAP  || '${c.budgetCap||500}');
 const STOP_LOSS    = parseFloat(process.env.STOPLOSS   || '${c.stopLoss||15}') / 100;
-const INTERVAL_MS  = { '5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000 }[process.env.INTERVAL||'${c.interval||'1h'}'] || 3600000;
+const INTERVAL_MS  = { '5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000 }[process.env.INTERVAL||"${c.interval||'1h'}"] || 3600000;
 
 let totalSpent = 0, totalQty = 0, avgEntry = 0;
 
@@ -930,8 +930,8 @@ const STRATEGY_NAME   = 'Copy Bot';
 const TRADER_RANK     = parseInt(process.env.TRADERRANK    || '${c.traderRank||1}');
 const POSITION_SIZE   = parseFloat(process.env.POSITIONSIZE|| '${c.positionSize||50}');
 const MAX_DRAWDOWN    = parseFloat(process.env.MAXDRAWDOWN || '${c.maxDrawdown||20}') / 100;
-const BLACKLIST       = (process.env.BLACKLIST||'${c.blacklist||''}').split(',').filter(Boolean);
-const POLL_MS         = { '30s':30000,'1m':60000,'5m':300000 }[process.env.POLLINTERVAL||'${c.pollInterval||'1m'}'] || 60000;
+const BLACKLIST       = (process.env.BLACKLIST||"${c.blacklist||''}").split(',').filter(Boolean);
+const POLL_MS         = { '30s':30000,'1m':60000,'5m':300000 }[process.env.POLLINTERVAL||"${c.pollInterval||'1m'}"] || 60000;
 const LB_URL          = 'https://www.asterdex.com/bapi/futures/v1/public/campaign/trade/pro/leaderboard';
 
 let openPositions = {}, peakBalance = null;
@@ -966,11 +966,11 @@ function getMomentumBot(c) {
   return `
 const STRATEGY_NAME  = 'Momentum Bot';
 const THRESHOLD      = parseFloat(process.env.GAINTHRESHOLD || '${c.gainThreshold||5}') / 100;
-const SCAN_MS        = { '1m':60000,'5m':300000,'15m':900000,'1h':3600000 }[process.env.SCANINTERVAL||'${c.scanInterval||'5m'}'] || 300000;
+const SCAN_MS        = { '1m':60000,'5m':300000,'15m':900000,'1h':3600000 }[process.env.SCANINTERVAL||"${c.scanInterval||'5m'}"] || 300000;
 const POSITION_SIZE  = parseFloat(process.env.POSITIONSIZE  || '${c.positionSize||50}');
 const TAKE_PROFIT    = parseFloat(process.env.TAKEPROFIT     || '${c.takeProfit||8}') / 100;
 const STOP_LOSS      = parseFloat(process.env.STOPLOSS       || '${c.stopLoss||4}') / 100;
-const FILTER         = process.env.SYMBOLFILTER || '${c.symbolFilter||'USDT'}';
+const FILTER         = process.env.SYMBOLFILTER || "${c.symbolFilter||'USDT'}";
 const MAX_POS        = parseInt(process.env.MAXPOSITIONS    || '${c.maxPositions||3}');
 const DAILY_LOSS_CAP = parseFloat(process.env.DAILYLOSSCAP  || '${c.dailyLossCap||100}');
 
@@ -1039,11 +1039,11 @@ function getJupiterBot(c, variant) {
 
   return `
 const STRATEGY_NAME  = '${stratName}';
-const INPUT_MINT     = process.env.INPUTMINT    || '${c.inputMint  || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'}'; // USDC
-const OUTPUT_MINT    = process.env.OUTPUTMINT   || '${c.outputMint || 'So11111111111111111111111111111111111111112'}';   // SOL
+const INPUT_MINT     = process.env.INPUTMINT    || "${c.inputMint  || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'}"; // USDC
+const OUTPUT_MINT    = process.env.OUTPUTMINT   || "${c.outputMint || 'So11111111111111111111111111111111111111112'}";   // SOL
 const INPUT_AMOUNT   = parseFloat(process.env.INPUTAMOUNT   || '${c.inputAmount   || defaultAmount}');
 const THRESHOLD      = parseFloat(process.env.GAINTHRESHOLD || '${c.gainThreshold || defaultThreshold}') / 100;
-const SCAN_MS        = { '10s':10000,'30s':30000,'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000 }[process.env.SCANINTERVAL || '${c.scanInterval || defaultInterval}'] || 60000;
+const SCAN_MS        = { '10s':10000,'30s':30000,'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000 }[process.env.SCANINTERVAL || "${c.scanInterval || defaultInterval}"] || 60000;
 const SLIPPAGE_BPS   = parseInt(process.env.SLIPPAGEBPS     || '${c.slippageBps   || defaultSlippage}');
 const MAX_SWAPS_DAY  = parseInt(process.env.MAXSWAPSPERDAY  || '${c.maxSwapsPerDay || c.dailyTradeCap || defaultMaxSwaps}');
 const CASHOUT_ADDR   = process.env.CASHOUTADDRESS || '${c.cashoutAddress || ''}';
@@ -1190,12 +1190,12 @@ function getScalperBot(c) {
   return `
 const STRATEGY_NAME  = 'Scalper Bot';
 const THRESHOLD      = parseFloat(process.env.GAINTHRESHOLD || '${c.gainThreshold||0.3}') / 100;
-const SCAN_MS        = { '30s':30000,'1m':60000,'2m':120000,'5m':300000 }[process.env.SCANINTERVAL||'${c.scanInterval||'1m'}'] || 60000;
+const SCAN_MS        = { '30s':30000,'1m':60000,'2m':120000,'5m':300000 }[process.env.SCANINTERVAL||"${c.scanInterval||'1m'}"] || 60000;
 const POSITION_SIZE  = parseFloat(process.env.POSITIONSIZE  || '${c.positionSize||25}');
 const TAKE_PROFIT    = parseFloat(process.env.TAKEPROFIT     || '${c.takeProfit||0.5}') / 100;
 const STOP_LOSS      = parseFloat(process.env.STOPLOSS       || '${c.stopLoss||0.3}') / 100;
 const MIN_VOLUME     = parseFloat(process.env.MINVOLUME24H   || '${c.minVolume24h||5000000}');
-const FILTER         = process.env.SYMBOLFILTER || '${c.symbolFilter||'USDT'}';
+const FILTER         = process.env.SYMBOLFILTER || "${c.symbolFilter||'USDT'}";
 const MAX_POS        = parseInt(process.env.MAXPOSITIONS    || '${c.maxPositions||5}');
 const DAILY_LOSS_CAP = parseFloat(process.env.DAILYLOSSCAP  || '${c.dailyLossCap||50}');
 const DAILY_TRADE_CAP= parseInt(process.env.DAILYTRADECAP   || '${c.dailyTradeCap||100}');
@@ -1341,7 +1341,7 @@ function connectTerminal() {
   if (ws) ws.close();
   if (!term) initTerminal();
 
-  term.writeln(`\x1b[90mConnecting to ws://${host}...\x1b[0m`);
+  term.writeln('\x1b[90mConnecting to ws://' + host + '...\x1b[0m');
   ws = new WebSocket(`ws://${host}`);
 
   ws.onopen = () => {
