@@ -1,0 +1,19 @@
+{
+  "name": "aster-trader-board",
+  "version": "1.0.0",
+  "description": "Aster DEX leaderboard dashboard with Vercel proxy",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^37.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
