@@ -357,3 +357,41 @@
   color: #c89bff;
   border: 1px solid rgba(153,69,255,0.3);
 }
+
+/* extra balance pill in status bar */
+.wallet-balance-extra {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 4px;
+}
+
+/* ── Jupiter token tabs (USDC / USDT) ── */
+.token-tabs {
+  display: flex; gap: 8px;
+  margin-bottom: 1.25rem;
+}
+.token-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 18px;
+  border-radius: 4px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.token-tab:hover { border-color: var(--yellow); color: var(--yellow); }
+.token-tab.active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--black);
+}
+.token-tab-icon { font-size: 14px; }
