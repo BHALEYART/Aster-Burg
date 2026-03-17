@@ -165,11 +165,20 @@ async function refreshUSDTBalance() {
     return;
   }
   if (walletType === 'phantom') {
-    // Route through our Vercel proxy to avoid CORS issues with Solana RPCs
     try {
-      const r = await fetch(`/api/solana-balance?address=${walletAddress}`);
+      const r    = await fetch(`/api/solana-balance?address=${walletAddress}`);
       const data = await r.json();
-      document.getElementById('wallet-usdt-balance').textContent = `$${data.balance}`;
+      // Show USDC as primary balance (Jupiter bots use USDC)
+      document.getElementById('wallet-balance-label').textContent = 'USDC Balance:';
+      document.getElementById('wallet-usdt-balance').textContent  = `$${data.usdc}`;
+      // Show SOL + USDT as secondary info
+      const extra = document.getElementById('wallet-sol-balance');
+      if (extra) {
+        extra.style.display  = 'inline';
+        extra.textContent    = `SOL: ${data.sol}  USDT: $${data.usdt}`;
+      }
+      // Store balances for funding flow
+      window._solanaBalances = data;
     } catch(e) {
       document.getElementById('wallet-usdt-balance').textContent = 'n/a';
     }
@@ -227,8 +236,19 @@ function generateBotPool() {
 }
 
 async function fundBotPool() {
-  if (!walletSigner || !botPoolWallet) {
-    alert('Please connect your wallet first');
+  if (!botPoolWallet) {
+    alert('Please generate a bot wallet first.');
+    return;
+  }
+
+  // Jupiter/Solana path — send USDC via Phantom
+  if (activeChain === 'jupiter' && walletType === 'phantom') {
+    await fundBotPoolSolana();
+    return;
+  }
+
+  if (!walletSigner) {
+    alert('Please connect your EVM wallet first.');
     return;
   }
   const amount = parseFloat(document.getElementById('fund-amount').value);
@@ -267,6 +287,61 @@ async function fundBotPool() {
     btn.textContent = '❌ Failed — try again';
     btn.disabled = false;
     alert('Transfer failed: ' + (e.reason || e.message));
+  }
+}
+
+async function fundBotPoolSolana() {
+  const amount = parseFloat(document.getElementById('fund-amount').value);
+  if (!amount || amount < 10) { alert('Minimum 10 USDC.'); return; }
+
+  const usdcBalance = parseFloat(window._solanaBalances?.usdc || 0);
+  if (usdcBalance < amount) {
+    alert(`Insufficient USDC.\nYou have: $${usdcBalance} USDC\nNeeded: $${amount} USDC`);
+    return;
+  }
+
+  const btn = document.getElementById('btn-fund-transfer');
+  btn.textContent = '⏳ Preparing...';
+  btn.disabled    = true;
+
+  try {
+    // For Jupiter bots, the bot pool IS a Solana keypair.
+    // We show the destination address and guide the user through Phantom's
+    // built-in send UI (most reliable cross-browser approach without web3.js bundle).
+    const dest = botPoolWallet.address;
+
+    const confirmed = confirm(
+      `Send ${amount} USDC to your bot pool wallet?\n\n` +
+      `Bot wallet: ${dest}\n\n` +
+      `This will open Phantom's send UI. Paste the above address and send ${amount} USDC.\n\n` +
+      `Click OK to copy the address to your clipboard.`
+    );
+
+    if (confirmed) {
+      await navigator.clipboard.writeText(dest).catch(() => {});
+      // Try to open Phantom's send deeplink
+      window.open(`https://phantom.app/ul/transfer?mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&to=${dest}`, '_blank');
+
+      btn.textContent = '✅ Address copied — send in Phantom';
+      btn.disabled    = false;
+      btn.style.background = 'rgba(0,200,110,0.25)';
+
+      // Mark as funded so config pre-fills
+      fundingEnabled = true;
+      document.getElementById('fund-wallet-preview').style.display = 'block';
+      document.getElementById('fund-wallet-addr').textContent = dest;
+
+      await refreshUSDTBalance();
+      showConfigStep();
+    } else {
+      btn.textContent = '💸 Send USDC to Bot (Solana)';
+      btn.disabled    = false;
+    }
+  } catch(e) {
+    console.error('[fund-solana]', e);
+    btn.textContent = '💸 Send USDC to Bot (Solana)';
+    btn.disabled    = false;
+    alert('Error: ' + e.message);
   }
 }
 
@@ -311,15 +386,32 @@ function switchChain(chain) {
     const isPhantom = walletType === 'phantom';
     document.getElementById('fund-block').style.display = 'block';
     if (isPhantom && chain === 'aster') {
-      // Phantom on Aster tab -> show bridge warning
-      document.getElementById('fund-inner').style.display    = 'none';
+      document.getElementById('fund-inner').style.display     = 'none';
       document.getElementById('solana-warning').style.display = 'block';
     } else {
-      // EVM wallet on any tab, OR Phantom on Jupiter tab -> show fund form
-      document.getElementById('fund-inner').style.display    = 'block';
+      document.getElementById('fund-inner').style.display     = 'block';
       document.getElementById('solana-warning').style.display = 'none';
     }
   }
+  // Update fund form labels for chain
+  updateFundFormForChain(chain);
+}
+
+function updateFundFormForChain(chain) {
+  const isJupiter = chain === 'jupiter';
+  const label     = document.getElementById('fund-amount-label');
+  const hint      = document.getElementById('fund-amount-hint');
+  const explainer = document.getElementById('fund-explainer-body');
+  const transferBtn = document.getElementById('btn-fund-transfer');
+
+  if (label)   label.textContent = isJupiter ? 'USDC amount to fund' : 'USDT amount to fund';
+  if (hint)    hint.textContent  = isJupiter
+    ? 'ℹ️ Minimum 10 USDC. Bot uses USDC to swap on Jupiter (Solana).'
+    : 'ℹ️ Minimum $10 USDT. The bot will never spend more than this.';
+  if (explainer) explainer.textContent = isJupiter
+    ? 'A fresh Solana keypair is generated for this bot. You send USDC to it from Phantom. The bot uses only that pool for Jupiter swaps — your main wallet stays separate. Withdraw back anytime with the cashout command.'
+    : 'A fresh isolated wallet is generated just for this bot. You transfer a specific USDT amount into it. The bot can only use that pool — it has zero access to your main wallet. When done, withdraw back with one command.';
+  if (transferBtn) transferBtn.textContent = isJupiter ? '💸 Send USDC to Bot (Solana)' : '💸 Transfer USDT to Bot';
 }
 
 // ── Strategy card clicks (both grids) ────────────────────────────────────────
